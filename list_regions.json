@@ -1,0 +1,894 @@
+{
+  "components": {
+    "parameters": {
+      "locale": {
+        "description": "Локаль, с которой производится поиск и отдаются результаты.\n",
+        "in": "query",
+        "name": "locale",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "locale_filter": {
+        "description": "Список локалей через запятую, по которым нужно фильтровать.",
+        "example": "ru_RU",
+        "in": "query",
+        "name": "locale_filter",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "page": {
+        "description": "Номер запрашиваемой страницы.",
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "page_size": {
+        "description": "Количество результатов поиска, выводимых на одной странице.",
+        "in": "query",
+        "name": "page_size",
+        "schema": {
+          "default": 1000,
+          "maximum": 2000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": {
+        "description": "Фильтр по типу объекта, перечисляются через запятую. <br>Список доступных типов: <ul> <li>`region` — регион;</li> <li>`segment` — сегмент;</li> <li>`universe` — universe.</li> </ul>",
+        "examples": {
+          "multipleIds": {
+            "summary": "Пример нескольких типов",
+            "value": [
+              "region",
+              "segment"
+            ]
+          },
+          "oneId": {
+            "summary": "Пример единичного типа",
+            "value": [
+              "region"
+            ]
+          }
+        },
+        "explode": false,
+        "in": "query",
+        "name": "type",
+        "schema": {
+          "default": "region",
+          "type": "string"
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse400": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ObjMetaBadRequest"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorResponse403": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ObjMetaForbidden"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorResponse404": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ObjMetaNotFound"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorResponse408": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ObjMetaTimeout"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorResponse500": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ObjMetaServerError"
+          }
+        },
+        "type": "object"
+      },
+      "GenCountry": {
+        "allOf": [
+          {
+            "maxLength": 2,
+            "minLength": 2,
+            "type": "string"
+          }
+        ],
+        "nullable": true
+      },
+      "GenId": {
+        "example": "123456",
+        "minLength": 1,
+        "pattern": "^[1-9]{1}[0-9]*|[0]$",
+        "type": "string"
+      },
+      "GenZoomLevel": {
+        "maximum": 22,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "ObjMeta": {
+        "description": "Метаданные ответа",
+        "properties": {
+          "issue_date": {
+            "description": "Дата последнего обновления данных.",
+            "type": "string"
+          },
+          "code": {
+            "description": "Код ответа.",
+            "example": 200,
+            "type": "integer"
+          },
+          "api_version": {
+            "description": "Текущая версия API.",
+            "example": "dev",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "api_version"
+        ],
+        "type": "object"
+      },
+      "ObjMetaBadRequest": {
+        "description": "Метаданные ответа",
+        "properties": {
+          "issue_date": {
+            "description": "Дата последнего обновления данных.",
+            "type": "string"
+          },
+          "error": {
+            "properties": {
+              "type": {
+                "description": "Короткий уникальный текстовый код ошибки.",
+                "example": "paramIsEmpty",
+                "type": "string"
+              },
+              "message": {
+                "description": "Описание ошибки.",
+                "example": "Param 'lon' mustn`t be empty",
+                "type": "string"
+              }
+            }
+          },
+          "code": {
+            "description": "Код ответа.",
+            "example": 400,
+            "type": "integer"
+          },
+          "api_version": {
+            "description": "Текущая версия API.",
+            "example": "dev",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ObjMetaForbidden": {
+        "description": "Метаданные ответа",
+        "properties": {
+          "api_version": {
+            "description": "Текущая версия API.",
+            "example": "dev",
+            "type": "string"
+          },
+          "issue_date": {
+            "description": "Дата последнего обновления данных.",
+            "type": "string"
+          },
+          "error": {
+            "properties": {
+              "type": {
+                "description": "Короткий уникальный текстовый код ошибки.",
+                "example": "forbidden",
+                "type": "string"
+              },
+              "message": {
+                "description": "Описание ошибки.",
+                "example": "Authorization error, incorrect key.",
+                "type": "string"
+              }
+            }
+          },
+          "code": {
+            "description": "Код ответа.",
+            "example": 403,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "ObjMetaNotFound": {
+        "description": "Метаданные ответа",
+        "properties": {
+          "api_version": {
+            "description": "Текущая версия API.",
+            "example": "dev",
+            "type": "string"
+          },
+          "issue_date": {
+            "description": "Дата последнего обновления данных.",
+            "type": "string"
+          },
+          "error": {
+            "properties": {
+              "type": {
+                "description": "Короткий уникальный текстовый код ошибки.",
+                "example": "itemNotFound",
+                "type": "string"
+              },
+              "message": {
+                "description": "Описание ошибки.",
+                "example": "Results not found",
+                "type": "string"
+              }
+            }
+          },
+          "code": {
+            "description": "Код ответа.",
+            "example": 404,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "ObjMetaServerError": {
+        "description": "Метаданные ответа",
+        "properties": {
+          "code": {
+            "description": "Код ответа.",
+            "example": 503,
+            "type": "integer"
+          },
+          "api_version": {
+            "description": "Текущая версия API.",
+            "example": "dev",
+            "type": "string"
+          },
+          "issue_date": {
+            "description": "Дата последнего обновления данных.",
+            "type": "string"
+          },
+          "error": {
+            "properties": {
+              "type": {
+                "description": "Короткий уникальный текстовый код ошибки.",
+                "example": "serviceUnavailable",
+                "type": "string"
+              },
+              "message": {
+                "description": "Описание ошибки.",
+                "example": "Service is temporary unavailable",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "type": "object"
+      },
+      "ObjMetaTimeout": {
+        "description": "Метаданные ответа",
+        "properties": {
+          "code": {
+            "description": "Код ответа.",
+            "example": 408,
+            "type": "integer"
+          },
+          "api_version": {
+            "description": "Текущая версия API.",
+            "example": "dev",
+            "type": "string"
+          },
+          "issue_date": {
+            "description": "Дата последнего обновления данных.",
+            "type": "string"
+          },
+          "error": {
+            "properties": {
+              "type": {
+                "description": "Короткий уникальный текстовый код ошибки.",
+                "example": "backendException",
+                "type": "string"
+              },
+              "message": {
+                "description": "Описание ошибки.",
+                "example": "Search timeout",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "type": "object"
+      },
+      "ObjRegion": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GenId"
+              }
+            ],
+            "description": "Уникальный идентификатор региона."
+          },
+          "type": {
+            "description": "Тип объекта. \n\nВозможные значения:\n\n * `region` — регион;\n * `segment` — сегмент;\n * `universe` — universe.",
+            "example": "region",
+            "type": "string"
+          },
+          "name": {
+            "description": "Название региона.",
+            "example": "Москва",
+            "minLength": 1,
+            "type": "string"
+          },
+          "bounds": {
+            "allOf": [
+              {
+                "example": "POLYGON((83.4457915421126 53.4866943332863,84.0879338133862 53.4866943332863,84.0879338133862 53.1585977185895,83.4457915421126 53.1585977185895,83.4457915421126 53.4866943332863)",
+                "minLength": 1,
+                "type": "string"
+              }
+            ],
+            "description": "Геометрия границ проекта в формате WKT.",
+            "nullable": true
+          },
+          "seo": {
+            "additionalProperties": false,
+            "description": "Дополнительные поля для SEO.",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description"
+            ],
+            "type": "object"
+          },
+          "domain": {
+            "description": "Значение домена",
+            "example": "ru",
+            "type": "string"
+          },
+          "uri_code": {
+            "description": "Код региона, который будет отображаться в домене.",
+            "example": "nnovgorod",
+            "minLength": 1,
+            "type": "string"
+          },
+          "online_languages": {
+            "additionalProperties": false,
+            "properties": {
+              "default_lang": {
+                "type": "string"
+              },
+              "available": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "available",
+              "default_lang"
+            ],
+            "type": "object"
+          },
+          "flags": {
+            "additionalProperties": false,
+            "description": "Признаки наличия определённой информации в регионе.",
+            "properties": {
+              "gdpr": {
+                "description": "GDPR (General Data Protection Regulation)",
+                "type": "boolean"
+              },
+              "2gis_reviews": {
+                "description": "Есть ли 2gis отзывы в регионе.",
+                "type": "boolean"
+              },
+              "public_transport": {
+                "description": "Наличие данных по общественному транспорту.",
+                "type": "boolean"
+              },
+              "has_net_booklet": {
+                "description": "Есть ли провайдерские буклеты в регионе.",
+                "type": "boolean"
+              },
+              "parking_layer": {
+                "description": "Наличие слоя парковок.",
+                "type": "boolean"
+              },
+              "road_network": {
+                "description": "Наличие информации по автомобильным дорогам.",
+                "type": "boolean"
+              },
+              "metro": {
+                "description": "Наличие метро.",
+                "type": "boolean"
+              },
+              "traffic": {
+                "description": "Наличие данных по пробкам.",
+                "type": "boolean"
+              },
+              "pedestrian_routing": {
+                "description": "Наличие пешеходной маршрутизации.",
+                "type": "boolean"
+              },
+              "flamp": {
+                "description": "В регионе работает сервис Flamp и доступны отзывы по организациям.",
+                "type": "boolean"
+              },
+              "truck_graph": {
+                "description": "Наличие грузового графа.",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "settlements": {
+            "description": "Список городов-спутников.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "country_code": {
+            "$ref": "#/components/schemas/GenCountry"
+          },
+          "default_pos": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropRegionDefaultPos"
+              }
+            ],
+            "nullable": true
+          },
+          "zoom_level": {
+            "additionalProperties": false,
+            "description": "Уровень масштаба.",
+            "properties": {
+              "min": {
+                "$ref": "#/components/schemas/GenZoomLevel"
+              },
+              "max": {
+                "$ref": "#/components/schemas/GenZoomLevel"
+              }
+            },
+            "type": "object"
+          },
+          "locale": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropLocale"
+              }
+            ],
+            "description": "Текущая локаль для региона.",
+            "example": "ru_RU",
+            "type": "string"
+          },
+          "uri_aliases": {
+            "description": "Набор алиасов региона.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name_grammatical_cases": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropRegionNameGrammaticalCases"
+              }
+            ],
+            "description": "Склонение названия региона.",
+            "nullable": true
+          },
+          "locales": {
+            "description": "Список локалей, на которых возможен поиск для данного региона.",
+            "example": "ru_RU",
+            "items": {
+              "$ref": "#/components/schemas/PropLocale"
+            },
+            "type": "array"
+          },
+          "code": {
+            "description": "Код региона.",
+            "example": "nnovgorod",
+            "minLength": 1,
+            "type": "string"
+          },
+          "time_zone": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropRegionTimeZone"
+              }
+            ],
+            "nullable": true
+          },
+          "statistics": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropRegionStatistics"
+              }
+            ],
+            "nullable": true
+          },
+          "satellites": {
+            "description": "Список городов-спутников в виде объектов.",
+            "items": {
+              "$ref": "#/components/schemas/ObjSatellites"
+            },
+            "type": "array"
+          },
+          "tips_languages": {
+            "description": "Допустимые языки.",
+            "example": "{\"ru\": \"ru\"}",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "code",
+          "uri_code",
+          "uri_aliases",
+          "allow_for_indexing",
+          "domain",
+          "locale",
+          "locales",
+          "settlements",
+          "satellites",
+          "country_code",
+          "zoom_level",
+          "hidden",
+          "weights_time",
+          "flags"
+        ],
+        "type": "object"
+      },
+      "ObjSatellites": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GenId"
+              }
+            ],
+            "description": "Идентификатор населённого пункта."
+          },
+          "name": {
+            "description": "Имя населённого пункта.",
+            "example": "Москва",
+            "minLength": 1,
+            "type": "string"
+          },
+          "geometry": {
+            "description": "Геометрия населённого пункта.",
+            "example": "POLYGON((83.4457915421126 53.4866943332863,84.0879338133862 53.4866943332863,84.0879338133862 53.1585977185895,83.4457915421126 53.1585977185895,83.4457915421126 53.4866943332863)",
+            "minLength": 1,
+            "type": "string"
+          },
+          "centroid": {
+            "description": "Центроид населённого пункта.",
+            "example": "POINT(83.4457915421126 53.4866943332863)",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "geometry",
+          "centroid"
+        ],
+        "type": "object"
+      },
+      "PropLocale": {
+        "example": "ru_RU",
+        "maxLength": 5,
+        "minLength": 5,
+        "pattern": "^([a-z]{2})_([A-Z]{2})$",
+        "type": "string"
+      },
+      "PropRegionDefaultPos": {
+        "additionalProperties": false,
+        "description": "Позиция по умолчанию для отображения проекта.",
+        "properties": {
+          "lat": {
+            "description": "Широта.",
+            "example": "56.7724145",
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "zoom": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GenZoomLevel"
+              }
+            ],
+            "description": "Уровень масштаба, рекомендуемый для дефолтного отображения всего проекта.",
+            "example": "11"
+          },
+          "lon": {
+            "description": "Долгота.",
+            "example": "43.2988455",
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          }
+        }
+      },
+      "PropRegionNameGrammaticalCases": {
+        "additionalProperties": false,
+        "description": "Склонение названия региона.",
+        "properties": {
+          "prepositional": {
+            "description": "В предложном падеже.",
+            "example": "Новосибирске",
+            "type": "string"
+          },
+          "accusative": {
+            "description": "В винительном падеже.",
+            "example": "Новосибирск",
+            "type": "string"
+          },
+          "dative": {
+            "description": "В дательном падеже.",
+            "example": "Новосибирску",
+            "type": "string"
+          },
+          "genitive": {
+            "description": "В родительном падеже.",
+            "example": "Новосибирска",
+            "type": "string"
+          }
+        }
+      },
+      "PropRegionStatistics": {
+        "additionalProperties": false,
+        "description": "Статистика по региону.",
+        "properties": {
+          "branch_count": {
+            "description": "Количество филиалов в регионе.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "route_count": {
+            "description": "Количество маршрутов общественного транспорта.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rubric_count": {
+            "description": "Количество рубрик в регионе.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "org_count": {
+            "description": "Количество организаций в регионе.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      },
+      "PropRegionTimeZone": {
+        "additionalProperties": false,
+        "description": "Часовой пояс.",
+        "properties": {
+          "name": {
+            "description": "Часовой пояс в формате <a href='https://en.wikipedia.org/wiki/List_of_tz_database_time_zones'>Time Zone Database</a>.",
+            "example": "Asia/Novosibirsk",
+            "minLength": 1,
+            "pattern": "^.*/.*$",
+            "type": "string"
+          },
+          "offset": {
+            "description": "Сдвиг времени относительно времени по Гринвичу в минутах.",
+            "example": 240,
+            "type": "integer"
+          }
+        }
+      },
+      "Region": {
+        "additionalProperties": false,
+        "description": "Результат",
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ObjMeta"
+          },
+          "result": {
+            "description": "Основной результат",
+            "properties": {
+              "items": {
+                "description": "Массив найденных объектов.",
+                "items": {
+                  "$ref": "#/components/schemas/ObjRegion"
+                },
+                "type": "array"
+              },
+              "total": {
+                "description": "Количество найденных объектов.",
+                "example": 1,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total",
+              "items"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "meta",
+          "result"
+        ],
+        "type": "object"
+      },
+      "RegionGet": {
+        "$ref": "#/components/schemas/Region"
+      },
+      "RegionList": {
+        "$ref": "#/components/schemas/Region"
+      },
+      "RegionSearch": {
+        "$ref": "#/components/schemas/Region"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "email": "api@2gis.ru",
+      "name": "2GIS API Support",
+      "url": "https://docs.2gis.com/"
+    },
+    "title": "Справочник регионов",
+    "version": "2.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/2.0/region/list": {
+      "get": {
+        "description": "Осуществляет выдачу списка всех существующих регионов по заданным параметрам.",
+        "parameters": [
+          {
+            "description": "Уникальный ключ пользователя API.",
+            "in": "query",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/page_size"
+          },
+          {
+            "$ref": "#/components/parameters/locale"
+          },
+          {
+            "$ref": "#/components/parameters/locale_filter"
+          },
+          {
+            "description": "Список кодов страны через запятую, по которым нужно фильтровать.",
+            "example": "ru",
+            "in": "query",
+            "name": "country_code_filter",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Дополнительные поля, которые необходимо отобразить в ответе, перечисляются через запятую. <br>Список доступных полей: <ul> <li>`items.name_grammatical_cases` — cклонение названия региона;</li> <li>`items.domain` — значение домена;</li> <li>`items.locales` — список локалей, на которых возможен поиск для данного региона;</li> <li>`items.time_zone` — часовой пояс;</li> <li>`items.bounds` — геометрия границ проекта в формате WKT;</li> <li>`items.statistics` — статистика по региону;</li> <li>`items.locale` — текущая локаль для региона;</li> <li>`items.settlements` — список городов-спутников;</li> <li>`items.satellites` — список городов-спутников в виде объектов;</li> <li>`items.code` — код региона;</li> <li>`items.uri_code` — код региона, который будет отображаться в домене;</li> <li>`items.uri_aliases` — набор алиасов региона;</li> <li>`items.allow_for_indexing` — список языков проекта, на которых разрешено индексировать;</li> <li>`items.country_code` — код страны;</li> <li>`items.default_pos` — позиция по умолчанию для отображения проекта;</li> <li>`items.zoom_level` — уровень масштаба;</li> <li>`items.flags` — признаки наличия определённой информации в регионе;</li> <li>`items.seo` — дополнительные поля для SEO;</li> <li>`items.hidden` — флаг, является ли проект скрытым;</li> <li>`items.weights_time` — время последнего обновления рекламных весов в формате Unix timestamp.</li> </ul>",
+            "explode": false,
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionList"
+                }
+              },
+              "text/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse403"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse500"
+                }
+              }
+            },
+            "description": "Server Error"
+          }
+        },
+        "summary": "Получение списка регионов по параметрам"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://catalog.api.2gis.com"
+    }
+  ]
+}
