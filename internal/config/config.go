@@ -5,5 +5,6 @@ type Config struct {
 }
 
 type Telegram struct {
-	Token string `envconfig:"TELEGRAM_BOT_TOKEN"`
+	Token string `envconfig:"TELEGRAM_BOT_TOKEN" required:"true"`
+	Debug bool   `envconfig:"TELEGRAM_BOT_DEBUG_MODE" default:"true"`
 }
