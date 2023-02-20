@@ -7,19 +7,36 @@ import (
 )
 
 func (t *telegram) Start(ctx context.Context) error {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates := t.api.GetUpdatesChan(u)
-	for update := range updates {
-		if update.Message == nil {
-			continue
-		}
-		m := tgbotapi.NewMessage(0, "nil")
-		t.api.Send(m)
-		fmt.Printf("%+v", update)
+	var (
+		log     = t.log.With().Str("method", "run").Logger()
+		updates tgbotapi.UpdatesChannel
+	)
+	{
+		u := tgbotapi.NewUpdate(0)
+		u.Timeout = 60
+		updates = t.api.GetUpdatesChan(u)
 	}
-	return nil
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case u := <-updates:
+			if u.Message == nil {
+				continue
+			}
+
+			fmt.Printf("ID %d", u.SentFrom().ID)
+
+			m := tgbotapi.NewMessage(u.FromChat().ID, fmt.Sprint(u.UpdateID))
+			msg, err := t.api.Send(m)
+			if err != nil {
+				log.Error().Err(err).Msg("couldn't send message")
+			}
+			_ = msg
+			//fmt.Printf("%+v", u)
+		}
+	}
 }
 
 func (t *telegram) Stop() error {
