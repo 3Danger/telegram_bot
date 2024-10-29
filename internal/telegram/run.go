@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -34,7 +35,6 @@ func (t *telegram) Start(ctx context.Context) error {
 				log.Error().Err(err).Msg("couldn't send message")
 			}
 			_ = msg
-			//fmt.Printf("%+v", u)
 		}
 	}
 }

@@ -2,9 +2,12 @@ package telegram
 
 import (
 	"context"
-	"github.com/3Danger/telegram_bot/internal/config"
+	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
+
+	"github.com/3Danger/telegram_bot/internal/config"
 )
 
 type Telegram interface {
@@ -23,7 +26,7 @@ func New(cnf config.Telegram, logger zerolog.Logger) (Telegram, error) {
 
 	api, err := tgbotapi.NewBotAPI(cnf.Token)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating new telegram api: %w", err)
 	}
 	api.Debug = cnf.Debug
 	return &telegram{api: api, log: logger, cnf: cnf}, nil

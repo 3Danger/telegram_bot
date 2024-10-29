@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
-	"github.com/3Danger/telegram_bot/internal/config"
-	"github.com/3Danger/telegram_bot/internal/telegram"
+	"os"
+	"os/signal"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
-	"os"
-	"os/signal"
+
+	"github.com/3Danger/telegram_bot/internal/config"
+	"github.com/3Danger/telegram_bot/internal/telegram"
 )
 
 func main() {

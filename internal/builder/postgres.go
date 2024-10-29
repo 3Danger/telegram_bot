@@ -1,19 +1,19 @@
-package store
+package builder
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
+
 	"github.com/3Danger/telegram_bot/internal/config"
-	pgx "github.com/jackc/pgx/v5"
-	"time"
 )
 
-type store struct {
-	conn             *pgx.Conn
-	operationTimeout time.Duration
+func (b *Build) Postgres() *pgx.Conn {
+	return b.db
 }
 
-func New(ctx context.Context, cfg *config.Postgres) (*store, error) {
+func postgres(ctx context.Context, cfg *config.Postgres) (*pgx.Conn, error) {
 	postgresUrl := fmt.Sprintf(
 		"postgres://%s:%s@%s/%s",
 		cfg.Username, cfg.Password, cfg.Host, cfg.Database,
@@ -22,5 +22,5 @@ func New(ctx context.Context, cfg *config.Postgres) (*store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &store{conn: conn, operationTimeout: cfg.OperationTimeout}, nil
+	return conn, nil
 }
