@@ -40,7 +40,7 @@ func New() (*Config, error) {
 type Config struct {
 	App      App
 	Telegram Telegram
-	Postgres Postgres
+	Repo     Repo
 }
 
 type App struct {
@@ -52,14 +52,24 @@ type Telegram struct {
 	Debug bool   `default:"true"                 envconfig:"TELEGRAM_BOT_DEBUG_MODE"`
 }
 
+type Repo struct {
+	InMemory
+	Postgres
+}
+
+type InMemory struct {
+	MaxItems int `envconfig:"REPO_IN_MEMORY_MAX_ITEMS" default:"100"`
+}
+
 type Postgres struct {
-	Host             string        `envconfig:"POSTGRES_HOST"     required:"true"`
-	Port             string        `envconfig:"POSTGRES_PORT"     required:"true"`
-	Username         string        `envconfig:"POSTGRES_USERNAME" required:"true"`
-	Database         string        `envconfig:"POSTGRES_DATABASE" required:"true"`
-	Password         string        `envconfig:"POSTGRES_PASSWORD" required:"true"`
-	SSL              string        `default:"disable"             envconfig:"POSTGRES_SSL"`
-	OperationTimeout time.Duration `default:"60s"                 envconfig:"POSTGRES_OPERATION_TIMEOUT"`
+	Host     string `envconfig:"REPO_POSTGRES_HOST"     required:"true"`
+	Port     string `envconfig:"REPO_POSTGRES_PORT"     required:"true"`
+	Username string `envconfig:"REPO_POSTGRES_USERNAME" required:"true"`
+	Database string `envconfig:"REPO_POSTGRES_DATABASE" required:"true"`
+	Password string `envconfig:"REPO_POSTGRES_PASSWORD" required:"true"`
+	SSL      string `envconfig:"REPO_POSTGRES_SSL"      default:"disable"`
+
+	OperationTimeout time.Duration `envconfig:"REPO_POSTGRES_OPERATION_TIMEOUT" default:"60s"`
 }
 
 func (p Postgres) DSN() string {

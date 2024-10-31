@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	api "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func (t *telegram) Start(ctx context.Context) error {
-	u := tgbotapi.NewUpdate(0)
+func (t *Telegram) Start(ctx context.Context) error {
+	u := api.NewUpdate(0)
 	u.Timeout = 60
 	updates := t.api.GetUpdatesChan(u)
 
@@ -19,14 +19,27 @@ func (t *telegram) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case u := <-updates:
-			// if u.Message == nil {
+			// if u.Text == nil {
 			//	continue
 			//}
 
 			zerolog.Ctx(ctx).Info().Interface("sent from", u.SentFrom()).Send()
 
 			data, _ := json.MarshalIndent(u.Message, "", "  ")
-			m := tgbotapi.NewMessage(u.FromChat().ID, string(data))
+			m := api.NewMessage(u.FromChat().ID, string(data))
+
+			registration := api.NewKeyboardButton("Регистрация")
+			registration.RequestContact = true
+			registration.RequestLocation = true
+
+			location := api.NewKeyboardButtonLocation("Поделись локацией черт")
+			location.RequestLocation = true
+
+			keyboard := api.NewReplyKeyboard(
+				api.NewKeyboardButtonRow(registration, location),
+			)
+
+			m.ReplyMarkup = keyboard
 
 			msg, err := t.api.Send(m)
 			if err != nil {
@@ -36,8 +49,4 @@ func (t *telegram) Start(ctx context.Context) error {
 			_ = msg
 		}
 	}
-}
-
-func (t *telegram) Stop() error {
-	return nil
 }

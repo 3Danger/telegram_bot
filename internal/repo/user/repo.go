@@ -1,30 +1,24 @@
 package user
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type Repo interface {
 	User(ctx context.Context, userID int) (*User, error)
-	State(ctx context.Context, chatID int) (State, error)
 }
 
 type User struct {
-	IsSupplier bool
-	FIO        struct {
-		FirstName string
-		LastName  string
-		Surname   string
-	}
-	Contact struct {
-		Telephone string
-		Whatsapp  string
-		Telegram  string
-	}
+	ID            int
+	HasRegistered bool
+	IsSupplier    bool
+	FirstName     string
+	LastName      string
+	Surname       string
+	Telephone     string
+	Whatsapp      string
+	Telegram      string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
-
-type name struct{}
-
-type State string
-
-const (
-	StateStart State = "start"
-)

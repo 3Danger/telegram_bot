@@ -32,7 +32,7 @@ func New(ctx context.Context) (*Build, error) {
 func createBuilder(ctx context.Context, cnf *config.Config) (b *Build, err error) {
 	b = new(Build)
 
-	if b.db, err = pgx.Connect(ctx, cnf.Postgres.DSN()); err != nil {
+	if b.db, err = pgx.Connect(ctx, cnf.Repo.Postgres.DSN()); err != nil {
 		return nil, fmt.Errorf("creating postgres db: %w", err)
 	}
 
