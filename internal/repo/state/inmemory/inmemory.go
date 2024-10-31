@@ -18,7 +18,7 @@ func NewRepo(maxItems int) state.Repo {
 	}
 }
 
-func (r *repo) State(_ context.Context, userID int) (string, error) {
+func (r *repo) Get(_ context.Context, userID int64) (string, error) {
 	s, ok := r.data.Get(userID)
 	if !ok {
 		return "", nil
@@ -27,9 +27,9 @@ func (r *repo) State(_ context.Context, userID int) (string, error) {
 	return s.(string), nil
 }
 
-func (r *repo) SetState(_ context.Context, userID int, command string) error {
+func (r *repo) Set(ctx context.Context, userID int64, state string) error {
 	r.data.Remove(userID)
-	r.data.Add(userID, command)
+	r.data.Add(userID, state)
 
 	return nil
 }

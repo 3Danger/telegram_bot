@@ -3,6 +3,6 @@ package state
 import "context"
 
 type Repo interface {
-	State(ctx context.Context, userID int) (string, error)
-	SetState(ctx context.Context, userID int, state string) error
+	Get(ctx context.Context, userID int64) (string, error)
+	Set(ctx context.Context, userID int64, state string) error
 }

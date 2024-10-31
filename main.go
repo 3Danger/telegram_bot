@@ -20,7 +20,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	ctx = zerolog.New(os.Stdout).Level(cnf.App.LogLevel).WithContext(ctx)
+	ctx = zerolog.New(os.Stdout).Level(cnf.App.LogLevel).With().Timestamp().Logger().WithContext(ctx)
 	ctx = graceful.Context(ctx)
 
 	if err = cmd.Run(ctx); err != nil {

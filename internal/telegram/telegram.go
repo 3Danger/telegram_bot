@@ -1,22 +1,24 @@
 package telegram
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog"
+	tele "gopkg.in/telebot.v4"
 
 	"github.com/3Danger/telegram_bot/internal/config"
 	"github.com/3Danger/telegram_bot/internal/repo/state"
 	"github.com/3Danger/telegram_bot/internal/repo/user"
-	c "github.com/3Danger/telegram_bot/pkg/command"
 )
 
 type Telegram struct {
-	api *tgbotapi.BotAPI
+	bot *tele.Bot
 	cnf config.Telegram
 
-	commands map[c.Name]*c.Command
-	repo     repo
+	repo repo
 }
 
 type repo struct {
@@ -24,36 +26,83 @@ type repo struct {
 	state state.Repo
 }
 
-func New(cnf config.Telegram, userRepo user.Repo, stateRepo state.Repo) (*Telegram, error) {
-	api, err := tgbotapi.NewBotAPI(cnf.Token)
+func New(
+	ctx context.Context,
+	cnf config.Telegram,
+	userRepo user.Repo,
+	stateRepo state.Repo,
+) (*Telegram, error) {
+	bot, err := configureBot(cnf)
 	if err != nil {
-		return nil, fmt.Errorf("creating new telegram api: %w", err)
+		return nil, err
 	}
 
-	api.Debug = cnf.Debug
-
-	return &Telegram{
-		api:      api,
-		cnf:      cnf,
-		commands: make(map[c.Name]*c.Command),
+	svc := &Telegram{
+		bot: bot,
+		cnf: cnf,
 		repo: repo{
 			user:  userRepo,
 			state: stateRepo,
 		},
-	}, nil
+	}
+
+	if err = svc.configureRoute(ctx); err != nil {
+		return nil, fmt.Errorf("configure telegram routes: %w", err)
+	}
+
+	return svc, nil
 }
 
-func (t *Telegram) addCommand(
-	name c.Name, processor c.ProcessorFn, middleware ...c.MiddlewareFn,
-) {
-	m := make([]c.MiddlewareFn, len(middleware)+1)
-	m = append(m, t.saveCommand(name))
-	m = append(m, middleware...)
+func configureBot(cnf config.Telegram) (*tele.Bot, error) {
+	bot, err := tele.NewBot(tele.Settings{
+		Token:  cnf.Token,
+		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+		//Verbose: cnf.Debug,
+		Verbose: false,
+		OnError: onError,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create new telegram bot: %w", err)
+	}
 
-	t.commands[name] = c.New(processor, m...)
+	return bot, nil
 }
 
-func (t *Telegram) InitCommands() {
-	t.addCommand(commandHome, t.home, t.middlewareAuthCheck)
-	t.addCommand(commandHome, t.home, t.middlewareAuthCheck)
+func onError(err error, c tele.Context) {
+	l, ok := c.Get("zerolog").(zerolog.Logger)
+	if !ok {
+		l = zerolog.New(os.Stdout)
+		l.Error().Msg("DEFAULT LOGGER")
+	}
+
+	l.Err(err).Interface("message", c.Message()).Send()
+}
+
+// Обновляем configureRoute для добавления нового обработчика
+func (t *Telegram) configureRoute(ctx context.Context) error {
+
+	t.bot.Use(
+		middlewareContext(ctx),
+		middlewareFilterBot(),
+		t.middlewareSaveLastState(),
+	)
+
+	start := t.bot.Group()
+	{
+		start.Handle("/start", t.handlerHome)
+		start.Handle(home, t.handlerHome)
+		start.Handle(auth, t.handlerAuth)
+		start.Handle(tele.OnText, t.handlerAuth)
+		start.Handle(tele.OnContact, t.handlerAuth)
+	}
+
+	return nil
+}
+
+func (t *Telegram) Start(ctx context.Context) error {
+	t.bot.Start()
+
+	<-ctx.Done()
+
+	return nil
 }

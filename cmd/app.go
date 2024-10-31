@@ -35,7 +35,7 @@ func runBot(ctx context.Context, b *build.Build) error {
 		repoState = b.RepoState()
 	)
 
-	tg, err := telegram.New(cnf.Telegram, repoUser, repoState)
+	tg, err := telegram.New(ctx, cnf.Telegram, repoUser, repoState)
 	if err != nil {
 		return fmt.Errorf("creating telegram client: %w", err)
 	}

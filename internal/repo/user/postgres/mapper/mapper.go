@@ -7,30 +7,25 @@ import (
 
 func UserToRepo(row query.User) *user.User {
 	return &user.User{
-		ID:            int(row.ID),
-		HasRegistered: row.HasRegistered,
-		IsSupplier:    row.IsSupplier,
-		FirstName:     row.FirstName,
-		LastName:      row.LastName,
-		Surname:       row.Surname,
-		Telephone:     row.Telephone,
-		Whatsapp:      row.Whatsapp,
-		Telegram:      row.Telegram,
-		CreatedAt:     row.CreatedAt,
-		UpdatedAt:     row.UpdatedAt,
+		ID:         row.ID,
+		IsSupplier: row.IsSupplier,
+		FirstName:  row.FirstName,
+		LastName:   row.LastName,
+		Surname:    row.Surname,
+		Phone:      row.Phone,
+		Whatsapp:   row.Whatsapp,
+		Telegram:   row.Telegram,
+		CreatedAt:  row.CreatedAt,
+		UpdatedAt:  row.UpdatedAt,
 	}
 }
 
-func UserToQuery(row user.User) query.UpsertUserParams {
-	return query.UpsertUserParams{
-		ID:            int64(row.ID),
-		HasRegistered: row.HasRegistered,
-		IsSupplier:    row.IsSupplier,
-		FirstName:     row.FirstName,
-		LastName:      row.LastName,
-		Surname:       row.Surname,
-		Telephone:     row.Telephone,
-		Whatsapp:      row.Whatsapp,
-		Telegram:      row.Telegram,
+func UserToQuery(row user.User) query.CreateUserParams {
+	return query.CreateUserParams{
+		ID:         row.ID,
+		IsSupplier: row.IsSupplier,
+		FirstName:  row.FirstName,
+		LastName:   row.LastName,
+		Surname:    row.Surname,
 	}
 }

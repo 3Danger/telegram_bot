@@ -24,8 +24,8 @@ func NewRepo(db query.DBTX) user.Repo {
 	}
 }
 
-func (r *repo) User(ctx context.Context, userID int) (*user.User, error) {
-	row, err := r.q.User(ctx, int64(userID))
+func (r *repo) User(ctx context.Context, userID int64) (*user.User, error) {
+	row, err := r.q.User(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -37,9 +37,57 @@ func (r *repo) User(ctx context.Context, userID int) (*user.User, error) {
 	return mapper.UserToRepo(row), nil
 }
 
-func (r *repo) UpsertUser(ctx context.Context, user user.User) error {
-	if err := r.q.UpsertUser(ctx, mapper.UserToQuery(user)); err != nil {
+func (r *repo) CreateUser(ctx context.Context, user user.User) error {
+	if err := r.q.CreateUser(ctx, mapper.UserToQuery(user)); err != nil {
 		return fmt.Errorf("making query: %w", err)
+	}
+
+	return nil
+}
+
+func (r *repo) UpdateUserContactTelegram(ctx context.Context, userID int64, telegram string) error {
+	affected, err := r.q.UpdateUserContactTelegram(ctx, query.UpdateUserContactTelegramParams{
+		ID:       userID,
+		Telegram: telegram,
+	})
+	if err != nil {
+		return fmt.Errorf("making query: %w", err)
+	}
+
+	if affected == 0 {
+		return user.ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (r *repo) UpdateUserContactWhatsapp(ctx context.Context, userID int64, whatsapp string) error {
+	affected, err := r.q.UpdateUserContactWhatsapp(ctx, query.UpdateUserContactWhatsappParams{
+		ID:       userID,
+		Whatsapp: whatsapp,
+	})
+	if err != nil {
+		return fmt.Errorf("making query: %w", err)
+	}
+
+	if affected == 0 {
+		return user.ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (r *repo) UpdateUserContactPhone(ctx context.Context, userID int64, phone string) error {
+	affected, err := r.q.UpdateUserContactPhone(ctx, query.UpdateUserContactPhoneParams{
+		ID:    userID,
+		Phone: phone,
+	})
+	if err != nil {
+		return fmt.Errorf("making query: %w", err)
+	}
+
+	if affected == 0 {
+		return user.ErrUserNotFound
 	}
 
 	return nil

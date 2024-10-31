@@ -11,8 +11,6 @@ import (
 // Все пользователи
 type User struct {
 	ID int64
-	// Заполнены все полня и регистрация завершена
-	HasRegistered bool
 	// Является ли поставщиком
 	IsSupplier bool
 	// Имя
@@ -22,7 +20,7 @@ type User struct {
 	// Отчество
 	Surname string
 	// Телефон
-	Telephone string
+	Phone string
 	// Номер whatsapp
 	Whatsapp string
 	// Ник в телеграмме
