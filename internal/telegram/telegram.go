@@ -115,6 +115,8 @@ func (t *Telegram) configureRoute(ctx context.Context) error {
 		supplier.Handle(constants.SupplierShowItems, t.handlerSupplierShowItems)
 		supplier.Handle(constants.SupplierPostItems, t.handlerSupplierPostItems)
 
+		//TODO Мне не нравится что эндпоинты (tele.OnPhoto, tele.OnMedia) "всеядные",
+		// нужен какой то единый конструктор который будет разделять по под-эндпоинтам
 		supplier.Handle(tele.OnPhoto, t.handlerSupplierPostItems)
 		supplier.Handle(tele.OnMedia, t.handlerSupplierPostItems)
 	}
