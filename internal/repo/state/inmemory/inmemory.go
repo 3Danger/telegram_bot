@@ -27,9 +27,15 @@ func (r *repo) Get(_ context.Context, userID int64) (string, error) {
 	return s.(string), nil
 }
 
-func (r *repo) Set(ctx context.Context, userID int64, state string) error {
+func (r *repo) Set(_ context.Context, userID int64, state string) error {
 	r.data.Remove(userID)
 	r.data.Add(userID, state)
+
+	return nil
+}
+
+func (r *repo) Delete(_ context.Context, userID int64) error {
+	r.data.Remove(userID)
 
 	return nil
 }

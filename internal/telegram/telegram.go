@@ -10,20 +10,24 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/3Danger/telegram_bot/internal/config"
+	cs "github.com/3Danger/telegram_bot/internal/repo/chain-states"
 	"github.com/3Danger/telegram_bot/internal/repo/state"
 	"github.com/3Danger/telegram_bot/internal/repo/user"
+	"github.com/3Danger/telegram_bot/internal/telegram/constants"
+	"github.com/3Danger/telegram_bot/internal/telegram/media"
 )
 
 type Telegram struct {
-	bot *tele.Bot
-	cnf config.Telegram
-
+	bot  *tele.Bot
+	cnf  config.Telegram
+	v    *media.Validator
 	repo repo
 }
 
 type repo struct {
-	user  user.Repo
-	state state.Repo
+	user        user.Repo
+	state       state.Repo
+	chainStates cs.Repo
 }
 
 func New(
@@ -31,19 +35,32 @@ func New(
 	cnf config.Telegram,
 	userRepo user.Repo,
 	stateRepo state.Repo,
+	csRepo cs.Repo,
 ) (*Telegram, error) {
 	bot, err := configureBot(cnf)
 	if err != nil {
 		return nil, err
 	}
 
+	const megaByte = 1024 * 1024
+
+	mediaValidator := media.NewValidator(
+		media.NewBound[int](1024, 8192),
+		media.NewBound[int64](megaByte/10, megaByte*10),
+		media.NewBound[int](480, 2592),
+		media.NewBound[int64](0, megaByte*15),
+		media.NewBound[time.Duration](time.Second*15, time.Second*60),
+	)
+
 	svc := &Telegram{
 		bot: bot,
 		cnf: cnf,
 		repo: repo{
-			user:  userRepo,
-			state: stateRepo,
+			user:        userRepo,
+			state:       stateRepo,
+			chainStates: csRepo,
 		},
+		v: mediaValidator,
 	}
 
 	if err = svc.configureRoute(ctx); err != nil {
@@ -90,10 +107,32 @@ func (t *Telegram) configureRoute(ctx context.Context) error {
 	start := t.bot.Group()
 	{
 		start.Handle("/start", t.handlerHome)
-		start.Handle(home, t.handlerHome)
-		start.Handle(auth, t.handlerAuth)
-		start.Handle(tele.OnText, t.handlerAuth)
-		start.Handle(tele.OnContact, t.handlerAuth)
+		start.Handle(constants.Home, t.handlerHome)
+	}
+
+	supplier := t.bot.Group()
+	{
+		supplier.Handle(constants.SupplierShowItems, t.handlerSupplierShowItems)
+		supplier.Handle(constants.SupplierPostItems, t.handlerSupplierPostItems)
+
+		supplier.Handle(tele.OnPhoto, t.handlerSupplierPostItems)
+		supplier.Handle(tele.OnMedia, t.handlerSupplierPostItems)
+	}
+	customer := t.bot.Group()
+	{
+		customer.Handle(constants.CustomerShowItems, t.handlerCustomerHome)
+	}
+
+	auth := t.bot.Group()
+	{
+		// Обработка команд редактирования
+		auth.Handle(constants.Auth, t.handlerAuth)
+		auth.Handle(tele.OnText, t.handlerAuth)
+		auth.Handle(tele.OnContact, t.handlerAuth)
+		auth.Handle(constants.Back, t.handlerBackNavigation)
+		auth.Handle(constants.AuthEditName, t.handlerEditName)
+		auth.Handle(constants.AuthEditPhone, t.handlerEditPhone)
+		auth.Handle(constants.AuthConfirm, t.handlerConfirmRegistration)
 	}
 
 	return nil

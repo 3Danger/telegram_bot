@@ -8,6 +8,7 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/3Danger/telegram_bot/internal/repo/user"
+	"github.com/3Danger/telegram_bot/internal/telegram/constants"
 )
 
 // State представляет текущее состояние пользователя в процессе авторизации
@@ -15,34 +16,12 @@ const (
 	StateNone            = ""
 	StateWaitingForName  = "waiting for name"
 	StateWaitingForPhone = "waiting for phone"
-
-	// Новые команды навигации
-	cmdBack      = "⬅️ Назад"
-	cmdConfirm   = "✅ Подтвердить"
-	cmdEditName  = "📝 Изменить ФИО"
-	cmdEditPhone = "📱 Изменить телефон"
 )
 
 // handlerAuth обрабатывает процесс авторизации
 func (t *Telegram) handlerAuth(c tele.Context) error {
 	ctx := getContext(c)
 
-	// Обработка команды "Назад"
-	if c.Text() == cmdBack {
-		return t.handleBackNavigation(ctx, c)
-	}
-
-	// Обработка команд редактирования
-	switch c.Text() {
-	case cmdEditName:
-		return t.handleEditName(ctx, c)
-	case cmdEditPhone:
-		return t.handleEditPhone(ctx, c)
-	case cmdConfirm:
-		return t.handleConfirmRegistration(ctx, c)
-	}
-
-	// Остальной код остается без изменений
 	state, err := t.repo.state.Get(ctx, c.Sender().ID)
 	if err != nil {
 		return fmt.Errorf("get user state: %w", err)
@@ -104,6 +83,9 @@ func (t *Telegram) authStateWaitingName(ctx context.Context, c tele.Context) err
 	if err = t.repo.user.CreateUser(ctx, newUser); err != nil {
 		return fmt.Errorf("update user name: %w", err)
 	}
+	if err = t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForPhone); err != nil {
+		return fmt.Errorf("set user state: %w", err)
+	}
 
 	// Создаем кнопку для отправки контакта
 	contactButton := &tele.ReplyMarkup{ResizeKeyboard: true}
@@ -113,16 +95,12 @@ func (t *Telegram) authStateWaitingName(ctx context.Context, c tele.Context) err
 		),
 	)
 
-	if err = t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForPhone); err != nil {
-		return fmt.Errorf("set user state: %w", err)
-	}
-
 	return c.Send("Теперь, пожалуйста, поделитесь вашим номером телефона", contactButton)
 }
 
 func (t *Telegram) authStateWaitingPhone(ctx context.Context, c tele.Context) error {
 	if c.Message().Contact == nil {
-		return c.Send("Пожалуйста, используйте кнопку 'Отправить номер телефона'", createMenu(cmdBack))
+		return c.Send("Пожалуйста, используйте кнопку 'Отправить номер телефона'", createMenu(constants.Back))
 	}
 
 	phone := c.Message().Contact.PhoneNumber
@@ -150,13 +128,15 @@ func (t *Telegram) authStateWaitingPhone(ctx context.Context, c tele.Context) er
 		u.FirstName, u.LastName, u.Surname, u.Phone)
 
 	buttons := createBigMenu(
-		[]string{cmdConfirm},
-		[]string{cmdEditName, cmdEditPhone},
+		[]string{constants.AuthConfirm},
+		[]string{constants.AuthEditName, constants.AuthEditPhone},
 	)
 
 	return c.Send(msg, buttons)
 }
-func (t *Telegram) handleBackNavigation(ctx context.Context, c tele.Context) error {
+func (t *Telegram) handlerBackNavigation(c tele.Context) error {
+	ctx := getContext(c)
+
 	state, err := t.repo.state.Get(ctx, c.Sender().ID)
 	if err != nil {
 		return fmt.Errorf("get user state: %w", err)
@@ -167,43 +147,43 @@ func (t *Telegram) handleBackNavigation(ctx context.Context, c tele.Context) err
 		if err := t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForName); err != nil {
 			return fmt.Errorf("set user state: %w", err)
 		}
-		return c.Send("Пожалуйста, введите ваше ФИО заново", createMenu(cmdBack))
+		return c.Send("Пожалуйста, введите ваше ФИО заново", createMenu(constants.Back))
 
 	case StateWaitingForName:
 		if err := t.repo.state.Set(ctx, c.Sender().ID, StateNone); err != nil {
 			return fmt.Errorf("set user state: %w", err)
 		}
-		return c.Send("Регистрация отменена", createMenu(home))
+		return c.Send("Регистрация отменена", createMenu(constants.Home))
 	}
 
 	return nil
 }
 
-func (t *Telegram) handleEditName(ctx context.Context, c tele.Context) error {
-	if err := t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForName); err != nil {
+func (t *Telegram) handlerEditName(c tele.Context) error {
+	if err := t.repo.state.Set(getContext(c), c.Sender().ID, StateWaitingForName); err != nil {
 		return fmt.Errorf("set user state: %w", err)
 	}
-	return c.Send("Пожалуйста, введите ваше ФИО заново", createMenu(cmdBack))
+	return c.Send("Пожалуйста, введите ваше ФИО заново", createMenu(constants.Back))
 }
 
-func (t *Telegram) handleEditPhone(ctx context.Context, c tele.Context) error {
-	if err := t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForPhone); err != nil {
+func (t *Telegram) handlerEditPhone(c tele.Context) error {
+	if err := t.repo.state.Set(getContext(c), c.Sender().ID, StateWaitingForPhone); err != nil {
 		return fmt.Errorf("set user state: %w", err)
 	}
 
 	contactButton := &tele.ReplyMarkup{ResizeKeyboard: true}
 	contactButton.Reply(
 		contactButton.Row(contactButton.Contact("Отправить номер телефона")),
-		contactButton.Row(contactButton.Text(cmdBack)),
+		contactButton.Row(contactButton.Text(constants.Back)),
 	)
 
 	return c.Send("Пожалуйста, поделитесь вашим номером телефона заново", contactButton)
 }
 
-func (t *Telegram) handleConfirmRegistration(ctx context.Context, c tele.Context) error {
-	if err := t.repo.state.Set(ctx, c.Sender().ID, StateNone); err != nil {
+func (t *Telegram) handlerConfirmRegistration(c tele.Context) error {
+	if err := t.repo.state.Delete(getContext(c), c.Sender().ID); err != nil {
 		return fmt.Errorf("set user state: %w", err)
 	}
 
-	return c.Send("Регистрация успешно завершена!", createMenu(home))
+	return c.Send("Регистрация успешно завершена!", createMenu(constants.Home))
 }

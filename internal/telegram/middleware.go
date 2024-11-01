@@ -2,9 +2,12 @@ package telegram
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rs/zerolog"
 	tele "gopkg.in/telebot.v4"
+
+	"github.com/3Danger/telegram_bot/internal/telegram/constants"
 )
 
 func getContext(c tele.Context) context.Context {
@@ -42,7 +45,6 @@ func middlewareContext(ctx context.Context) tele.MiddlewareFunc {
 func middlewareFilterBot() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
-
 			if c.Sender().IsBot {
 				return c.Send("Ботов пока не обслуживаем")
 			}
@@ -57,16 +59,37 @@ func middlewareFilterBot() tele.MiddlewareFunc {
 func (t *Telegram) middlewareSaveLastState() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
+			if msg := c.Message(); msg != nil && constants.IsValid(msg.Text) {
+				ctx := getContext(c)
+				switch msg.Text {
+				case constants.Back:
+					prev, err := t.repo.chainStates.Pop(ctx, c.Sender().ID)
+					if err != nil {
+						return fmt.Errorf("cleanning chain states: %w", err)
+					}
+					return c.Send("", createMenu(prev))
+				case constants.Home:
+					if err := t.repo.chainStates.Clear(ctx, c.Sender().ID); err != nil {
+						return fmt.Errorf("cleanning chain states: %w", err)
+					}
+				default:
+					if err := next(c); err != nil {
+						return err
+					}
 
-			zerolog.Ctx(getContext(c)).Info().Interface("MSG_BODY", c.Message()).Send()
+					if err := t.repo.chainStates.Push(ctx, c.Sender().ID, msg.Text); err != nil {
+						return fmt.Errorf("pushing chain state: %w", err)
+					}
 
-			if c.Sender().IsBot {
-				return c.Send("Ботов пока не обслуживаем")
+					return nil
+				}
 			}
 
-			err := next(c)
+			if err := next(c); err != nil {
+				return err
+			}
 
-			return err
+			return nil
 		}
 	}
 }
