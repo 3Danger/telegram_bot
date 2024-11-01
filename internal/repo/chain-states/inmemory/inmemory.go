@@ -42,17 +42,11 @@ func (r *repo) Push(ctx context.Context, userID int64, state string) error {
 }
 
 func (r *repo) Pop(ctx context.Context, userID int64) (string, error) {
-	curListAny, ok := r.data.Get(userID)
-	if !ok {
+	l, el := r.lastState(userID)
+	if el == nil || l == nil {
 		return "", nil
 	}
 
-	l := curListAny.(*list.List)
-
-	el := l.Front()
-	if el == nil {
-		return "", nil
-	}
 	l.Remove(el)
 
 	if l.Len() == 0 {
@@ -60,6 +54,31 @@ func (r *repo) Pop(ctx context.Context, userID int64) (string, error) {
 	}
 
 	return el.Value.(string), nil
+}
+
+func (r *repo) LastState(ctx context.Context, userID int64) (string, error) {
+	l, el := r.lastState(userID)
+	if el == nil || l == nil {
+		return "", nil
+	}
+
+	return el.Value.(string), nil
+}
+
+func (r *repo) lastState(userID int64) (*list.List, *list.Element) {
+	curListAny, ok := r.data.Get(userID)
+	if !ok {
+		return nil, nil
+	}
+
+	l := curListAny.(*list.List)
+
+	el := l.Front()
+	if el == nil {
+		return l, nil
+	}
+
+	return l, el
 }
 
 func (r *repo) Clear(ctx context.Context, userID int64) error {

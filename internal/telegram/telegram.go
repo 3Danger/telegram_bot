@@ -18,7 +18,10 @@ import (
 )
 
 type Telegram struct {
-	bot  *tele.Bot
+	bot *tele.Bot
+
+	routeOnLastStateMap map[string]tele.HandlerFunc
+
 	cnf  config.Telegram
 	v    *media.Validator
 	repo repo
@@ -53,8 +56,9 @@ func New(
 	)
 
 	svc := &Telegram{
-		bot: bot,
-		cnf: cnf,
+		bot:                 bot,
+		cnf:                 cnf,
+		routeOnLastStateMap: make(map[string]tele.HandlerFunc),
 		repo: repo{
 			user:        userRepo,
 			state:       stateRepo,
@@ -95,8 +99,37 @@ func onError(err error, c tele.Context) {
 	l.Err(err).Interface("message", c.Message()).Send()
 }
 
+// routeByLastState Если роут общий (на пример при выгрузке фото)
+// то запрос будет перенаправлен к предыдущему хендлеру для обработки данного медиа
+func (t *Telegram) routeByLastState(c tele.Context) error {
+	state, err := t.repo.chainStates.LastState(getContext(c), c.Sender().ID)
+	if err != nil {
+		return fmt.Errorf("getting last state: %w", err)
+	}
+
+	hander, ok := t.routeOnLastStateMap[state]
+	if !ok {
+		return c.Send("не верная команда", createMenu(constants.Home))
+	}
+
+	return hander(c)
+}
+
 // Обновляем configureRoute для добавления нового обработчика
 func (t *Telegram) configureRoute(ctx context.Context) error {
+	t.routeOnLastStateMap = map[string]tele.HandlerFunc{
+		//constants.Home:
+		//constants.Auth:
+		//constants.ImSupplier:
+		//constants.ImCustomer:
+		//constants.Back:
+		//constants.AuthConfirm:
+		//constants.AuthEditName:
+		//constants.AuthEditPhone:
+		//constants.CustomerShowItems:
+		//constants.SupplierShowItems:
+		constants.SupplierPostItems: t.handlerSupplierPostItems,
+	}
 
 	t.bot.Use(
 		middlewareContext(ctx),
@@ -117,8 +150,10 @@ func (t *Telegram) configureRoute(ctx context.Context) error {
 
 		//TODO Мне не нравится что эндпоинты (tele.OnPhoto, tele.OnMedia) "всеядные",
 		// нужен какой то единый конструктор который будет разделять по под-эндпоинтам
-		supplier.Handle(tele.OnPhoto, t.handlerSupplierPostItems)
-		supplier.Handle(tele.OnMedia, t.handlerSupplierPostItems)
+		supplier.Handle(tele.OnVideo, t.routeByLastState)
+		supplier.Handle(tele.OnVideoNote, t.routeByLastState)
+		supplier.Handle(tele.OnPhoto, t.routeByLastState)
+		supplier.Handle(tele.OnMedia, t.routeByLastState)
 	}
 	customer := t.bot.Group()
 	{
