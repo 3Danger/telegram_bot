@@ -7,7 +7,6 @@ import (
 	"github.com/3Danger/telegram_bot/internal/repo/user"
 	"github.com/3Danger/telegram_bot/internal/telegram/buttons"
 	"github.com/3Danger/telegram_bot/internal/telegram/buttons/inline"
-	"github.com/3Danger/telegram_bot/internal/telegram/buttons/reply"
 	"github.com/3Danger/telegram_bot/internal/telegram/models"
 )
 
@@ -21,10 +20,9 @@ func (t *Telegram) handlerHome(ctx context.Context, msg models.Data) error {
 		text := "Добро пожаловать!\nДля работы необходимо зарегистрироваться"
 
 		opts := inline.SendMessageOpts(
-			inline.Text(buttons.EndpointRegistration, models.PairKeyValues{
-				Key:   buttons.KeyEndpoint,
-				Value: buttons.EndpointRegistration,
-			}),
+			inline.Row(inline.Text(buttons.EndpointRegistration,
+				models.Pair{buttons.KeyEndpoint: buttons.EndpointRegistration},
+			)),
 		)
 
 		if _, err = t.bot.SendMessage(msg.ChatID, text, opts); err != nil {
@@ -42,11 +40,13 @@ func (t *Telegram) handlerHome(ctx context.Context, msg models.Data) error {
 }
 
 func (t *Telegram) handlerSupplierHome(ctx context.Context, msg models.Data) error {
-	text := ""
+	text := "Главное меню"
 
-	opts := reply.SendMessageOpts(
-		reply.ButtonSupplierPostItems,
-		reply.ButtonSupplierShowItems,
+	opts := inline.SendMessageOpts(
+		inline.Row(
+			inline.Text(buttons.ButtonSupplierShowItems, models.Pair{buttons.KeyEndpoint: "/show_goods"}),
+			inline.Text(buttons.ButtonSupplierPostItems, models.Pair{buttons.KeyEndpoint: "/post_goods"}),
+		),
 	)
 
 	if _, err := t.bot.SendMessage(msg.ChatID, text, opts); err != nil {
@@ -57,10 +57,12 @@ func (t *Telegram) handlerSupplierHome(ctx context.Context, msg models.Data) err
 }
 
 func (t *Telegram) handlerCustomerHome(ctx context.Context, msg models.Data) error {
-	text := ""
+	text := "Главное меню"
 
-	opts := reply.SendMessageOpts(
-		reply.ButtonCustomerShowItems,
+	opts := inline.SendMessageOpts(
+		inline.Row(
+			inline.Text("Показать товары", models.Pair{buttons.KeyEndpoint: "/show_goods"}),
+		),
 	)
 
 	if _, err := t.bot.SendMessage(msg.ChatID, text, opts); err != nil {

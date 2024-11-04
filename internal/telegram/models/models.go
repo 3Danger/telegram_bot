@@ -7,11 +7,10 @@ import (
 )
 
 type Data struct {
-	UserID        int64
-	ChatID        int64
-	Message       string
-	CallbackOrder []string
-	CallbackMap   map[string]string
+	UserID      int64
+	ChatID      int64
+	Message     string
+	CallbackMap map[string]string
 }
 
 const (
@@ -19,25 +18,39 @@ const (
 	pairSeparator = "="
 )
 
-type PairKeyValues struct {
-	Key, Value string
-}
+type Pair map[string]string
 
-func Pair(key, value string) PairKeyValues {
-	return PairKeyValues{
-		Key:   key,
-		Value: value,
+func (p Pair) With(k, v string) Pair {
+	cp := p.Clone()
+	if cp == nil {
+		cp = make(Pair)
 	}
+
+	cp[k] = v
+	return cp
 }
 
-func NewCallback(pairs ...PairKeyValues) string {
-	rows := make([]string, 0, len(pairs))
-	for _, item := range pairs {
-		if item.Value != "" {
-			rows = append(rows, item.Key+pairSeparator+item.Value)
+func (p Pair) Clone() Pair {
+	cp := make(Pair, len(p))
+	for k, v := range p {
+		cp[k] = v
+	}
+
+	return cp
+}
+
+func NewCallback(data Pair) string {
+	if len(data) == 0 {
+		return ""
+	}
+
+	rows := make([]string, 0, len(data))
+	for k, v := range data {
+		if v != "" {
+			rows = append(rows, k+pairSeparator+v)
 			continue
 		}
-		rows = append(rows, item.Key)
+		rows = append(rows, k)
 	}
 
 	return strings.Join(rows, expSeparator)
@@ -60,17 +73,17 @@ func NewMessage(update tele.Update) Data {
 		msg.UserID = cb.From.Id
 		cbData = cb.Data
 	}
-	msg.CallbackOrder, msg.CallbackMap = extractCallback(cbData)
+
+	msg.CallbackMap = extractCallback(cbData)
 
 	return msg
 }
 
-func extractCallback(data string) ([]string, map[string]string) {
+func extractCallback(data string) Pair {
 	rows := strings.Split(data, expSeparator)
 
 	var (
-		callbackOrder = make([]string, 0, len(rows))
-		callbackMap   = make(map[string]string, len(rows))
+		callbackMap = make(map[string]string, len(rows))
 	)
 
 	for _, row := range rows {
@@ -79,7 +92,6 @@ func extractCallback(data string) ([]string, map[string]string) {
 			continue
 		}
 
-		callbackOrder = append(callbackOrder, item[0])
 		if len(item) == 1 {
 			callbackMap[item[0]] = ""
 			continue
@@ -88,5 +100,5 @@ func extractCallback(data string) ([]string, map[string]string) {
 		callbackMap[item[0]] = item[1]
 	}
 
-	return callbackOrder, callbackMap
+	return callbackMap
 }

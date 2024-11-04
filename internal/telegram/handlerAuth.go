@@ -38,7 +38,7 @@ func (t *Telegram) handlerAuth(ctx context.Context, data models.Data) error {
 
 	if isRegisteredPermanent {
 		replyMessage := "Вы уже зарегистрированны"
-		opt := reply.SendMessageOpts(reply.ButtonHome)
+		opt := reply.SendMessageOpts(reply.Row(reply.ButtonHome))
 
 		if _, err = t.bot.SendMessage(data.ChatID, replyMessage, opt); err != nil {
 			return fmt.Errorf("sending message: %w", err)
@@ -47,155 +47,141 @@ func (t *Telegram) handlerAuth(ctx context.Context, data models.Data) error {
 		return nil
 	}
 
-	var replyMessage string
-	var opt *tele.SendMessageOpts
-	for range 2 {
-		if replyMessage, opt, err = t.authProcessing(ctx, &data); err != nil {
-			return fmt.Errorf("processing auth: %w", err)
-		}
-	}
-
-	if _, err = t.bot.SendMessage(data.ChatID, replyMessage, opt); err != nil {
-		return fmt.Errorf("sending message: %w", err)
-	}
-
-	return nil
+	return t.authProcessing(ctx, &data)
 }
 
-func (t *Telegram) authProcessing(ctx context.Context, data *models.Data) (replyMessage string, opt *tele.SendMessageOpts, err error) {
-	replyMessage = "Вы ввели неверные данные, пожалуйста повторите"
-	callbackEndpoint := models.PairKeyValues{
-		Key:   buttons.KeyEndpoint,
-		Value: buttons.EndpointRegistration,
-	}
+func (t *Telegram) authProcessing(ctx context.Context, data *models.Data) error {
+	replyMessage := "Вы ввели неверные данные, пожалуйста повторите"
 
-	state, err := t.svc.auth.GetSessionState(ctx, data.UserID)
-	if err != nil {
-		err = fmt.Errorf("getting from session: %w", err)
-		return
-	}
+	pair := models.Pair{buttons.KeyEndpoint: buttons.EndpointRegistration}
 
-state:
-	switch state {
-	case auth.StateNew:
+	messageChan := make(chan string, 1)
+	messageChan <- data.Message
+	close(messageChan)
+	defer func() {
+		for range messageChan {
+		}
+	}()
+
+	var opt *tele.SendMessageOpts
+
+	stateNew := func() error {
 		replyMessage = "Добро пожаловать!"
 
-		if err = t.svc.auth.AddUserID(ctx, data.UserID); err != nil {
-			err = fmt.Errorf("adding user id: %w", err)
-			return
+		if err := t.svc.auth.AddUserID(ctx, data.UserID); err != nil {
+			return fmt.Errorf("adding user id: %w", err)
 		}
-	case auth.StateType:
+
+		return nil
+	}
+
+	stateType := func() error {
 		if len(data.CallbackMap) == 0 || !user.Type(data.CallbackMap[buttons.UserType]).Valid() {
 			replyMessage = "Выберите пожалуйста тип аккаунта"
 
 			opt = inline.SendMessageOpts(
-				inline.Text(
-					"Я покупатель",
-					models.Pair(buttons.UserType, user.TypeCustomer.String()),
-					callbackEndpoint,
-				),
-				inline.Text(
-					"Я продавец",
-					models.Pair(buttons.UserType, user.TypeSupplier.String()),
-					callbackEndpoint,
+				inline.Row(
+					inline.Text("Я покупатель", pair.With(buttons.UserType, user.TypeCustomer.String())),
+					inline.Text("Я продавец", pair.With(buttons.UserType, user.TypeSupplier.String())),
 				),
 			)
-			break
+
+			return nil
 		}
 
-		if err = t.svc.auth.AddUserType(ctx, data.UserID, data.CallbackMap[buttons.UserType]); err != nil {
-			err = fmt.Errorf("adding user type: %w", err)
-			return
+		if err := t.svc.auth.AddUserType(ctx, data.UserID, data.CallbackMap[buttons.UserType]); err != nil {
+			return fmt.Errorf("adding user type: %w", err)
 		}
 
-	case auth.StateFirstName:
-		if data.Message == "" {
+		return nil
+	}
+
+	stateFirstName := func() error {
+		msg := <-messageChan
+		if msg == "" {
 			replyMessage = "Напишите пожалуйста ваше имя"
-			opt = reply.SendMessageOpts(reply.ButtonHome)
-			break
+			return nil
 		}
 
-		if err = t.svc.auth.AddFirstName(ctx, data.UserID, data.Message); err != nil {
-			err = fmt.Errorf("adding first name: %w", err)
-			return
+		if err := t.svc.auth.AddFirstName(ctx, data.UserID, msg); err != nil {
+			return fmt.Errorf("adding first name: %w", err)
 		}
 
-		data.Message = ""
-	case auth.StateLastName:
-		if data.Message == "" {
+		return nil
+	}
+	stateLastName := func() error {
+		msg := <-messageChan
+		if msg == "" {
 			replyMessage = "Напишите пожалуйста вашу фамилию"
-			opt = reply.SendMessageOpts(reply.ButtonHome)
-			break
+			return nil
 		}
 
-		if err = t.svc.auth.AddLastName(ctx, data.UserID, data.Message); err != nil {
-			err = fmt.Errorf("adding first name: %w", err)
-			return
+		if err := t.svc.auth.AddLastName(ctx, data.UserID, msg); err != nil {
+			return fmt.Errorf("adding last name: %w", err)
 		}
 
-		data.Message = ""
-	case auth.StateSurname:
-		if data.Message == "" {
+		return nil
+	}
+	stateSurname := func() error {
+		msg := <-messageChan
+		if msg == "" {
 			replyMessage = "Напишите пожалуйста вашу отчество"
-			opt = reply.SendMessageOpts(reply.ButtonHome)
-			break
+			return nil
 		}
 
-		if err = t.svc.auth.AddSurname(ctx, data.UserID, data.Message); err != nil {
-			err = fmt.Errorf("adding first name: %w", err)
-			return
+		if err := t.svc.auth.AddSurname(ctx, data.UserID, msg); err != nil {
+			return fmt.Errorf("adding surname: %w", err)
 		}
 
-		data.Message = ""
-	case auth.StatePhone:
-		if data.Message == "" {
+		return nil
+	}
+	statePhone := func() error {
+		msg := <-messageChan
+		if msg == "" {
 			replyMessage = "Укажите пожалуйста ваш номер телефона"
-			opt = reply.SendMessageOpts(reply.ButtonHome)
-			break
+			return nil
 		}
 
-		if err = t.svc.auth.AddPhone(ctx, data.UserID, data.Message); err != nil {
-			err = fmt.Errorf("adding first name: %w", err)
-			return
+		if err := t.svc.auth.AddPhone(ctx, data.UserID, msg); err != nil {
+			return fmt.Errorf("adding phone name: %w", err)
 		}
 
-		data.Message = ""
-	case auth.StateWhatsapp:
-		if data.Message == "" {
+		return nil
+	}
+	stateWhatsapp := func() error {
+		msg := <-messageChan
+		if msg == "" {
 			replyMessage = "Укажите пожалуйста ваш номер whatsapp"
-			opt = reply.SendMessageOpts(reply.ButtonHome)
-			break
+			return nil
 		}
 
-		if err = t.svc.auth.AddWhatsapp(ctx, data.UserID, data.Message); err != nil {
-			err = fmt.Errorf("adding first name: %w", err)
-			return
+		if err := t.svc.auth.AddWhatsapp(ctx, data.UserID, msg); err != nil {
+			return fmt.Errorf("adding whatsapp: %w", err)
 		}
 
-		data.Message = ""
-	case auth.StateTelegram:
-		if data.Message == "" {
+		return nil
+	}
+	stateTelegram := func() error {
+		msg := <-messageChan
+		if msg == "" {
 			replyMessage = "Укажите пожалуйста ваш телеграм ник"
-			opt = reply.SendMessageOpts(reply.ButtonHome)
-			break
+			return nil
 		}
 
-		if err = t.svc.auth.AddTelegram(ctx, data.UserID, data.Message); err != nil {
-			err = fmt.Errorf("adding first name: %w", err)
-			return
+		if err := t.svc.auth.AddTelegram(ctx, data.UserID, msg); err != nil {
+			return fmt.Errorf("adding telegram: %w", err)
 		}
 
-		data.Message = ""
-	case auth.StateCompleted:
-		var u *user.User
-		u, err = t.svc.auth.GetFromSession(ctx, data.UserID)
+		return nil
+	}
+
+	stateCompleted := func() error {
+		u, err := t.svc.auth.GetFromSession(ctx, data.UserID)
 		if err != nil {
-			err = fmt.Errorf("getting from session: %w", err)
-			return
+			return fmt.Errorf("getting from session: %w", err)
 		}
 		if u == nil {
-			err = errors.New("user not found")
-			return
+			return errors.New("user not found")
 		}
 
 		switch data.CallbackMap[buttons.Change] {
@@ -215,7 +201,7 @@ state:
 			u.Telegram = ""
 		case "":
 		default:
-			break state
+			return nil
 		}
 
 		if data.CallbackMap[buttons.Change] != "" {
@@ -226,70 +212,82 @@ state:
 				return nil
 			})
 			if err != nil {
-				err = fmt.Errorf("changing user data: %w", err)
-				return
+				return fmt.Errorf("changing user data: %w", err)
 			}
+
+			return nil
 		}
 
 		answer := data.CallbackMap[buttons.Confirm]
 		switch answer {
 		case "yes":
+			if err = t.svc.auth.SaveToPermanent(ctx, data.UserID); err != nil {
+				return fmt.Errorf("saving answer: %w", err)
+			}
+
+			replyMessage = "Сохранено!"
+			opt = reply.SendMessageOpts(reply.Row(reply.ButtonHome))
+
+			return nil
 		case "no":
+			replyMessage = "Что изменить?"
 			opt = inline.SendMessageOpts(
-				inline.Text("Изменить фамилию", models.Pair(buttons.Change, "first_name"), callbackEndpoint),
-				inline.Text("Изменить имя: %s\n", models.Pair(buttons.Change, "last_name"), callbackEndpoint),
-				inline.Text("Изменить отчество", models.Pair(buttons.Change, "surname"), callbackEndpoint),
-				inline.Text("Изменить тип аккаунта", models.Pair(buttons.Change, "user_type"), callbackEndpoint),
-				inline.Text("Изменить телефон", models.Pair(buttons.Change, "phone"), callbackEndpoint),
-				inline.Text("Изменить whatsapp", models.Pair(buttons.Change, "whatsapp"), callbackEndpoint),
-				inline.Text("Изменить telegram", models.Pair(buttons.Change, "telegram"), callbackEndpoint),
+				inline.Row(inline.Text("Изменить фамилию", pair.With(buttons.Change, "first_name"))),
+				inline.Row(inline.Text("Изменить имя", pair.With(buttons.Change, "last_name"))),
+				inline.Row(inline.Text("Изменить отчество", pair.With(buttons.Change, "surname"))),
+				inline.Row(inline.Text("Изменить тип аккаунта", pair.With(buttons.Change, "user_type"))),
+				inline.Row(inline.Text("Изменить телефон", pair.With(buttons.Change, "phone"))),
+				inline.Row(inline.Text("Изменить whatsapp", pair.With(buttons.Change, "whatsapp"))),
+				inline.Row(inline.Text("Изменить telegram", pair.With(buttons.Change, "telegram"))),
 			)
-
 		default:
-			u, err = t.svc.auth.GetFromSession(ctx, data.UserID)
-			if err != nil {
-				err = fmt.Errorf("getting from session: %w", err)
-				return
-			}
-			if u == nil {
-				err = fmt.Errorf("user not found")
-				return
-			}
-
-			typeUser := func(t user.Type) string {
-				switch t {
-				case user.TypeCustomer:
-					return "Я покупатель"
-				case user.TypeSupplier:
-					return "Я продавец"
-				default:
-					return ""
-				}
-			}
-
-			replyMessage = "Проверьте пожалуйста ваши данные\n"
-			replyMessage += fmt.Sprintf("Фамилие: %s\n", u.LastName)
-			replyMessage += fmt.Sprintf("Имя: %s\n", u.FirstName)
-			replyMessage += fmt.Sprintf("Отчество: %s\n", u.FirstName)
-			replyMessage += fmt.Sprintf("Тип аккаунта: %s\n", typeUser(u.Type))
-			replyMessage += fmt.Sprintf("Телефон: %s\n", u.FirstName)
-			replyMessage += fmt.Sprintf("WhatsApp: %s\n", u.Whatsapp)
-			replyMessage += fmt.Sprintf("Telegram: %s\n", u.Telegram)
-
 			opt = inline.SendMessageOpts(
-				inline.Text(
-					"Все верно",
-					models.Pair(buttons.Confirm, "yes"),
-					callbackEndpoint,
-				),
-				inline.Text(
-					"Изменить",
-					models.Pair(buttons.Confirm, "no"),
-					callbackEndpoint,
-				),
+				inline.Row(inline.Text("Сохранить", pair.With(buttons.Confirm, "yes"))),
+				inline.Row(inline.Text("Изменить", pair.With(buttons.Confirm, "no"))),
 			)
+			replyMessage = "Проверьте ваши данные\n"
+			replyMessage += fmt.Sprintf("Имя: %s\n", u.FirstName)
+			replyMessage += fmt.Sprintf("Фамилия: %s\n", u.LastName)
+			replyMessage += fmt.Sprintf("Отчество: %s\n", u.Surname)
+			replyMessage += fmt.Sprintf("Тип профиля: %s\n", u.Type)
+			replyMessage += fmt.Sprintf("Телефон: %s\n", u.Phone)
+			replyMessage += fmt.Sprintf("Whatsapp: %s\n", u.Whatsapp)
+			replyMessage += fmt.Sprintf("Telegram: %s\n", u.Telegram)
 		}
+
+		return nil
 	}
 
-	return
+	stateMap := map[auth.State]func() error{
+		auth.StateNew:       stateNew,
+		auth.StateType:      stateType,
+		auth.StateFirstName: stateFirstName,
+		auth.StateLastName:  stateLastName,
+		auth.StateSurname:   stateSurname,
+		auth.StatePhone:     statePhone,
+		auth.StateWhatsapp:  stateWhatsapp,
+		auth.StateTelegram:  stateTelegram,
+		auth.StateCompleted: stateCompleted,
+	}
+
+	for range 2 {
+		state, err := t.svc.auth.GetSessionState(ctx, data.UserID)
+		if err != nil {
+			return fmt.Errorf("getting from session: %w", err)
+		}
+		if fn, ok := stateMap[state]; ok {
+			if err = fn(); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+	}
+
+	if _, err := t.bot.SendMessage(data.ChatID, replyMessage, opt); err != nil {
+		return fmt.Errorf("sending message: %w", err)
+	}
+
+	return nil
 }

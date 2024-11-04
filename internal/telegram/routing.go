@@ -57,7 +57,7 @@ func (t *Telegram) updateProcessor(ctx context.Context, update tele.Update) erro
 	msg := models.NewMessage(update)
 
 	switch {
-	case len(msg.CallbackOrder) != 0:
+	case len(msg.CallbackMap) != 0:
 		if err := t.messageProcessor(ctx, msg.CallbackMap[buttons.KeyEndpoint], msg); err != nil {
 			return fmt.Errorf("handle callback query: %w", err)
 		}
@@ -76,7 +76,7 @@ func (t *Telegram) updateProcessor(ctx context.Context, update tele.Update) erro
 
 func (t *Telegram) handlerUndefined(msg models.Data) error {
 	opt := reply.SendMessageOpts(
-		reply.ButtonHome,
+		reply.Row(reply.ButtonHome),
 	)
 	if _, err := t.bot.SendMessage(msg.ChatID, "Вы просите странного", opt); err != nil {
 		return fmt.Errorf("sending message: %w", err)

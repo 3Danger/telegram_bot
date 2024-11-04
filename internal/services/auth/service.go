@@ -15,10 +15,10 @@ type repo struct {
 }
 
 type Service struct {
-	repo       repo
-	word       *regexp.Regexp
-	phone      *regexp.Regexp
-	tgUsername *regexp.Regexp
+	repo repo
+	word *regexp.Regexp
+	//phone      *regexp.Regexp
+	//tgUsername *regexp.Regexp
 }
 
 func NewService(permanentRepo, sessionRepo r.Repo[user.User]) *Service {
@@ -26,19 +26,21 @@ func NewService(permanentRepo, sessionRepo r.Repo[user.User]) *Service {
 	if err != nil {
 		panic(err)
 	}
+	// TODO пофиксить
 	phone, err := regexp.Compile(`^(\+?\d{1,3})\D?(\d{1,3}\D?)\D?(\d{2,4}.?){1,2}(\d{2,4})$`)
 	if err != nil {
 		panic(err)
 	}
-	tgUsername, err := regexp.Compile(`(?:@|(?:(?:(?:https?://)?t(?:elegram)?)\.me\/))(\w{4,})$`)
-	if err != nil {
-		panic(err)
-	}
+	_ = phone
+	//tgUsername, err := regexp.Compile(`(?:@|(?:(?:(?:https?://)?t(?:elegram)?)\.me\/))(\w{4,})$`)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	return &Service{
-		word:       word,
-		phone:      phone,
-		tgUsername: tgUsername,
+		word: word,
+		//phone:      phone,
+		//tgUsername: tgUsername,
 		repo: repo{
 			permanent: permanentRepo,
 			session:   sessionRepo,
@@ -106,9 +108,9 @@ func (s *Service) AddSurname(ctx context.Context, userId int64, data string) err
 }
 
 func (s *Service) AddPhone(ctx context.Context, userId int64, data string) error {
-	if len(s.phone.FindStringSubmatch(data)) != 1 {
-		return ErrWrongPhone
-	}
+	//if len(s.phone.FindStringSubmatch(data)) != 1 {
+	//	return ErrWrongPhone
+	//}
 
 	return s.SetSomething(ctx, userId, func(u *user.User) error {
 		u.Phone = data
@@ -118,9 +120,9 @@ func (s *Service) AddPhone(ctx context.Context, userId int64, data string) error
 }
 
 func (s *Service) AddTelegram(ctx context.Context, userId int64, data string) error {
-	if len(s.tgUsername.FindStringSubmatch(data)) != 1 {
-		return ErrWrongNickName
-	}
+	//if len(s.tgUsername.FindStringSubmatch(data)) != 1 {
+	//	return ErrWrongNickName
+	//}
 
 	return s.SetSomething(ctx, userId, func(u *user.User) error {
 		u.Telegram = data
@@ -130,9 +132,9 @@ func (s *Service) AddTelegram(ctx context.Context, userId int64, data string) er
 }
 
 func (s *Service) AddWhatsapp(ctx context.Context, userId int64, data string) error {
-	if len(s.phone.FindStringSubmatch(data)) != 1 {
-		return ErrWrongPhone
-	}
+	//if len(s.phone.FindStringSubmatch(data)) != 1 {
+	//	return ErrWrongPhone
+	//}
 
 	return s.SetSomething(ctx, userId, func(u *user.User) error {
 		u.Whatsapp = data
