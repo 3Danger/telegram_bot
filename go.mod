@@ -3,7 +3,6 @@ module github.com/3Danger/telegram_bot
 go 1.22.2
 
 require (
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/jackc/pgx/v5 v5.7.1
@@ -16,7 +15,7 @@ require (
 )
 
 require (
-	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
+	github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.30 // indirect
 	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -34,5 +33,4 @@ require (
 	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
-	gopkg.in/telebot.v4 v4.0.0-beta.4 // indirect
 )

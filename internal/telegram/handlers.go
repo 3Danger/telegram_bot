@@ -1,103 +1,71 @@
 package telegram
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 
-	tele "gopkg.in/telebot.v4"
-
-	"github.com/3Danger/telegram_bot/internal/telegram/constants"
+	"github.com/3Danger/telegram_bot/internal/repo/user"
+	"github.com/3Danger/telegram_bot/internal/telegram/buttons"
+	"github.com/3Danger/telegram_bot/internal/telegram/buttons/inline"
+	"github.com/3Danger/telegram_bot/internal/telegram/buttons/reply"
+	"github.com/3Danger/telegram_bot/internal/telegram/models"
 )
 
-func (t *Telegram) handlerHome(c tele.Context) error {
-	u, err := t.repo.user.User(getContext(c), c.Sender().ID)
+func (t *Telegram) handlerHome(ctx context.Context, msg models.Data) error {
+	u, err := t.repo.user.Get(ctx, msg.UserID)
 	if err != nil {
-		return fmt.Errorf("getting user: %w", err)
+		return fmt.Errorf("getting user from repo: %w", err)
 	}
+
 	if u == nil {
-		return c.Send(
-			"Добро пожаловать!\nДля пользования необходимо регистрация",
-			createMenu(constants.Auth),
+		text := "Добро пожаловать!\nДля работы необходимо зарегистрироваться"
+
+		opts := inline.SendMessageOpts(
+			inline.Text(buttons.EndpointRegistration, models.PairKeyValues{
+				Key:   buttons.KeyEndpoint,
+				Value: buttons.EndpointRegistration,
+			}),
 		)
-	}
 
-	if u.IsSupplier {
-		return t.handlerSupplierHome(c)
-	}
-
-	return t.handlerCustomerHome(c)
-}
-
-// Добавить товары TODO на доработке
-func (t *Telegram) handlerSupplierPostItems(c tele.Context) error {
-	msg := c.Message()
-	if msg != nil || msg.Media() != nil {
-		return c.Send("Пришлите фото/видео товара")
-	}
-
-	media := msg.Media()
-
-	file, err := c.Bot().File(media.MediaFile())
-	if err != nil {
-		return fmt.Errorf("getting photo file: %w", err)
-	}
-	defer file.Close()
-
-	switch media := media.(type) {
-	case *tele.Photo:
-		if err := t.v.ValidatePhoto(media); err != nil {
-			return err // TODO пояснить ошибку для пользователя
+		if _, err = t.bot.SendMessage(msg.ChatID, text, opts); err != nil {
+			return fmt.Errorf("sending message: %w", err)
 		}
 
-	case *tele.Video:
-		if err := t.v.ValidateVideo(media); err != nil {
-			return err // TODO пояснить ошибку для пользователя
-		}
-
-	case *tele.VideoNote:
-		if err := t.v.ValidateVideoNote(media); err != nil {
-			return err // TODO пояснить ошибку для пользователя
-		}
+		return nil
 	}
 
-	// Проверка что файл не битый для дебаша
-	path, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting currenc working dir: %w", err)
+	if u.Type == user.TypeSupplier {
+		return t.handlerSupplierHome(ctx, msg)
 	}
 
-	f, err := os.Create(filepath.Join(path, "file.jpg"))
-	if err != nil {
-		return fmt.Errorf("creating file: %w", err)
-	}
-
-	b, err := io.Copy(f, file)
-	if err != nil {
-		return fmt.Errorf("copying file: %w", err)
-	}
-
-	fmt.Println("PHOTO", b)
-	//msg.Photo.
-	//msg.Photo.File.FileReader
-	//os.Create("tmp")
-
-	return c.Send("Пришлите пожалуйста фото")
+	return t.handlerCustomerHome(ctx, msg)
 }
 
-// Показать мои товары
-func (t *Telegram) handlerSupplierShowItems(c tele.Context) error {
-	return c.Send("", createMenu(constants.Back))
+func (t *Telegram) handlerSupplierHome(ctx context.Context, msg models.Data) error {
+	text := ""
+
+	opts := reply.SendMessageOpts(
+		reply.ButtonSupplierPostItems,
+		reply.ButtonSupplierShowItems,
+	)
+
+	if _, err := t.bot.SendMessage(msg.ChatID, text, opts); err != nil {
+		return fmt.Errorf("sending message: %w", err)
+	}
+
+	return nil
 }
 
-func (t *Telegram) handlerSupplierHome(c tele.Context) error {
-	return c.Send("", createMenu(
-		//constants.SupplierShowItems,
-		constants.SupplierPostItems,
-	))
-}
+func (t *Telegram) handlerCustomerHome(ctx context.Context, msg models.Data) error {
+	text := ""
 
-func (t *Telegram) handlerCustomerHome(c tele.Context) error {
-	return c.Reply("", createMenu(constants.CustomerShowItems))
+	opts := reply.SendMessageOpts(
+		reply.ButtonCustomerShowItems,
+	)
+
+	if _, err := t.bot.SendMessage(msg.ChatID, text, opts); err != nil {
+		return fmt.Errorf("sending message: %w", err)
+	}
+
+	return nil
 }

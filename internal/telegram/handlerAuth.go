@@ -2,188 +2,294 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"regexp"
 
-	tele "gopkg.in/telebot.v4"
+	tele "github.com/PaulSonOfLars/gotgbot/v2"
 
 	"github.com/3Danger/telegram_bot/internal/repo/user"
-	"github.com/3Danger/telegram_bot/internal/telegram/constants"
+	"github.com/3Danger/telegram_bot/internal/services/auth"
+	"github.com/3Danger/telegram_bot/internal/telegram/buttons"
+	"github.com/3Danger/telegram_bot/internal/telegram/buttons/inline"
+	"github.com/3Danger/telegram_bot/internal/telegram/buttons/reply"
+	"github.com/3Danger/telegram_bot/internal/telegram/models"
 )
 
 // State представляет текущее состояние пользователя в процессе авторизации
 const (
-	StateNone            = ""
-	StateWaitingForName  = "waiting for name"
-	StateWaitingForPhone = "waiting for phone"
+	StateNone       = ""
+	StateCreateUser = "auth_create user"
+	StateUserType   = "auth_user_type"
+	StateFirstName  = "auth_first_name"
+	StateLastName   = "auth_last_name"
+	StateSurname    = "auth_surname"
+	StatePhone      = "auth_phone"
+	StateWhatsapp   = "auth_whatsapp"
+	StateTelegram   = "auth_telegram"
+	StateFinish     = "auth_finish"
 )
 
 // handlerAuth обрабатывает процесс авторизации
-func (t *Telegram) handlerAuth(c tele.Context) error {
-	ctx := getContext(c)
-
-	state, err := t.repo.state.Get(ctx, c.Sender().ID)
+func (t *Telegram) handlerAuth(ctx context.Context, data models.Data) error {
+	isRegisteredPermanent, err := t.svc.auth.RegisteredPermanent(ctx, data.UserID)
 	if err != nil {
-		return fmt.Errorf("get user state: %w", err)
+		return fmt.Errorf("checking register permanent: %w", err)
 	}
 
-	switch state {
-	case StateNone:
-		return t.authStateNone(ctx, c)
-	case StateWaitingForName:
-		return t.authStateWaitingName(ctx, c)
-	case StateWaitingForPhone:
-		return t.authStateWaitingPhone(ctx, c)
+	if isRegisteredPermanent {
+		replyMessage := "Вы уже зарегистрированны"
+		opt := reply.SendMessageOpts(reply.ButtonHome)
+
+		if _, err = t.bot.SendMessage(data.ChatID, replyMessage, opt); err != nil {
+			return fmt.Errorf("sending message: %w", err)
+		}
+
+		return nil
+	}
+
+	var replyMessage string
+	var opt *tele.SendMessageOpts
+	for range 2 {
+		if replyMessage, opt, err = t.authProcessing(ctx, &data); err != nil {
+			return fmt.Errorf("processing auth: %w", err)
+		}
+	}
+
+	if _, err = t.bot.SendMessage(data.ChatID, replyMessage, opt); err != nil {
+		return fmt.Errorf("sending message: %w", err)
 	}
 
 	return nil
 }
 
-func (t *Telegram) authStateNone(ctx context.Context, c tele.Context) error {
-	currentUser, err := t.repo.user.User(ctx, c.Sender().ID)
+func (t *Telegram) authProcessing(ctx context.Context, data *models.Data) (replyMessage string, opt *tele.SendMessageOpts, err error) {
+	replyMessage = "Вы ввели неверные данные, пожалуйста повторите"
+	callbackEndpoint := models.PairKeyValues{
+		Key:   buttons.KeyEndpoint,
+		Value: buttons.EndpointRegistration,
+	}
+
+	state, err := t.svc.auth.GetSessionState(ctx, data.UserID)
 	if err != nil {
-		return fmt.Errorf("getting user: %w", err)
+		err = fmt.Errorf("getting from session: %w", err)
+		return
 	}
 
-	if currentUser != nil {
-		if err = t.repo.state.Set(ctx, c.Sender().ID, StateNone); err != nil {
-			return fmt.Errorf("set user state: %w", err)
-		}
-
-		return c.Send("Вы уже зарегистрированы")
-	}
-
-	if err = t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForName); err != nil {
-		return fmt.Errorf("set user state: %w", err)
-	}
-
-	return c.Send("Пожалуйста, введите ваше ФИО")
-}
-
-func (t *Telegram) authStateWaitingName(ctx context.Context, c tele.Context) error {
-	reg, err := regexp.Compile("[a-zA-Zа-яА-Я]*")
-	if err != nil {
-		return fmt.Errorf("compile regular expression: %w", err)
-	}
-
-	names := reg.FindAllString(c.Text(), -1)
-
-	if len(names) != 3 {
-		return c.Send("Вы ввели неверные данные, пожалуйста повторите")
-	}
-
-	newUser := user.User{
-		ID:         c.Sender().ID,
-		IsSupplier: false,
-		FirstName:  names[0],
-		LastName:   names[1],
-		Surname:    names[2],
-	}
-
-	if err = t.repo.user.CreateUser(ctx, newUser); err != nil {
-		return fmt.Errorf("update user name: %w", err)
-	}
-	if err = t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForPhone); err != nil {
-		return fmt.Errorf("set user state: %w", err)
-	}
-
-	// Создаем кнопку для отправки контакта
-	contactButton := &tele.ReplyMarkup{ResizeKeyboard: true}
-	contactButton.Reply(
-		contactButton.Row(
-			contactButton.Contact("Отправить номер телефона"),
-		),
-	)
-
-	return c.Send("Теперь, пожалуйста, поделитесь вашим номером телефона", contactButton)
-}
-
-func (t *Telegram) authStateWaitingPhone(ctx context.Context, c tele.Context) error {
-	if c.Message().Contact == nil {
-		return c.Send("Пожалуйста, используйте кнопку 'Отправить номер телефона'", createMenu(constants.Back))
-	}
-
-	phone := c.Message().Contact.PhoneNumber
-	if err := t.repo.user.UpdateUserContactPhone(ctx, c.Sender().ID, phone); err != nil {
-		return fmt.Errorf("update user phone: %w", err)
-	}
-
-	u, err := t.repo.user.User(ctx, c.Sender().ID)
-	if err != nil {
-		return fmt.Errorf("getting user: %w", err)
-	}
-
-	if u == nil {
-		return user.ErrUserNotFound
-	}
-
-	msg := fmt.Sprintf(`Проверьте ваши данные:
-Имя: %s
-Фамилия: %s
-Отчество: %s
-Телефон: %s
-
-Если данные верны, нажмите "Подтвердить".
-Для исправления данных используйте соответствующие кнопки.`,
-		u.FirstName, u.LastName, u.Surname, u.Phone)
-
-	buttons := createBigMenu(
-		[]string{constants.AuthConfirm},
-		[]string{constants.AuthEditName, constants.AuthEditPhone},
-	)
-
-	return c.Send(msg, buttons)
-}
-func (t *Telegram) handlerBackNavigation(c tele.Context) error {
-	ctx := getContext(c)
-
-	state, err := t.repo.state.Get(ctx, c.Sender().ID)
-	if err != nil {
-		return fmt.Errorf("get user state: %w", err)
-	}
-
+state:
 	switch state {
-	case StateWaitingForPhone:
-		if err := t.repo.state.Set(ctx, c.Sender().ID, StateWaitingForName); err != nil {
-			return fmt.Errorf("set user state: %w", err)
+	case auth.StateNew:
+		replyMessage = "Добро пожаловать!"
+
+		if err = t.svc.auth.AddUserID(ctx, data.UserID); err != nil {
+			err = fmt.Errorf("adding user id: %w", err)
+			return
 		}
-		return c.Send("Пожалуйста, введите ваше ФИО заново", createMenu(constants.Back))
+	case auth.StateType:
+		if len(data.CallbackMap) == 0 || !user.Type(data.CallbackMap[buttons.UserType]).Valid() {
+			replyMessage = "Выберите пожалуйста тип аккаунта"
 
-	case StateWaitingForName:
-		if err := t.repo.state.Set(ctx, c.Sender().ID, StateNone); err != nil {
-			return fmt.Errorf("set user state: %w", err)
+			opt = inline.SendMessageOpts(
+				inline.Text(
+					"Я покупатель",
+					models.Pair(buttons.UserType, user.TypeCustomer.String()),
+					callbackEndpoint,
+				),
+				inline.Text(
+					"Я продавец",
+					models.Pair(buttons.UserType, user.TypeSupplier.String()),
+					callbackEndpoint,
+				),
+			)
+			break
 		}
-		return c.Send("Регистрация отменена", createMenu(constants.Home))
+
+		if err = t.svc.auth.AddUserType(ctx, data.UserID, data.CallbackMap[buttons.UserType]); err != nil {
+			err = fmt.Errorf("adding user type: %w", err)
+			return
+		}
+
+	case auth.StateFirstName:
+		if data.Message == "" {
+			replyMessage = "Напишите пожалуйста ваше имя"
+			opt = reply.SendMessageOpts(reply.ButtonHome)
+			break
+		}
+
+		if err = t.svc.auth.AddFirstName(ctx, data.UserID, data.Message); err != nil {
+			err = fmt.Errorf("adding first name: %w", err)
+			return
+		}
+
+		data.Message = ""
+	case auth.StateLastName:
+		if data.Message == "" {
+			replyMessage = "Напишите пожалуйста вашу фамилию"
+			opt = reply.SendMessageOpts(reply.ButtonHome)
+			break
+		}
+
+		if err = t.svc.auth.AddLastName(ctx, data.UserID, data.Message); err != nil {
+			err = fmt.Errorf("adding first name: %w", err)
+			return
+		}
+
+		data.Message = ""
+	case auth.StateSurname:
+		if data.Message == "" {
+			replyMessage = "Напишите пожалуйста вашу отчество"
+			opt = reply.SendMessageOpts(reply.ButtonHome)
+			break
+		}
+
+		if err = t.svc.auth.AddSurname(ctx, data.UserID, data.Message); err != nil {
+			err = fmt.Errorf("adding first name: %w", err)
+			return
+		}
+
+		data.Message = ""
+	case auth.StatePhone:
+		if data.Message == "" {
+			replyMessage = "Укажите пожалуйста ваш номер телефона"
+			opt = reply.SendMessageOpts(reply.ButtonHome)
+			break
+		}
+
+		if err = t.svc.auth.AddPhone(ctx, data.UserID, data.Message); err != nil {
+			err = fmt.Errorf("adding first name: %w", err)
+			return
+		}
+
+		data.Message = ""
+	case auth.StateWhatsapp:
+		if data.Message == "" {
+			replyMessage = "Укажите пожалуйста ваш номер whatsapp"
+			opt = reply.SendMessageOpts(reply.ButtonHome)
+			break
+		}
+
+		if err = t.svc.auth.AddWhatsapp(ctx, data.UserID, data.Message); err != nil {
+			err = fmt.Errorf("adding first name: %w", err)
+			return
+		}
+
+		data.Message = ""
+	case auth.StateTelegram:
+		if data.Message == "" {
+			replyMessage = "Укажите пожалуйста ваш телеграм ник"
+			opt = reply.SendMessageOpts(reply.ButtonHome)
+			break
+		}
+
+		if err = t.svc.auth.AddTelegram(ctx, data.UserID, data.Message); err != nil {
+			err = fmt.Errorf("adding first name: %w", err)
+			return
+		}
+
+		data.Message = ""
+	case auth.StateCompleted:
+		var u *user.User
+		u, err = t.svc.auth.GetFromSession(ctx, data.UserID)
+		if err != nil {
+			err = fmt.Errorf("getting from session: %w", err)
+			return
+		}
+		if u == nil {
+			err = errors.New("user not found")
+			return
+		}
+
+		switch data.CallbackMap[buttons.Change] {
+		case "first_name":
+			u.FirstName = ""
+		case "last_name":
+			u.LastName = ""
+		case "surname":
+			u.Surname = ""
+		case "user_type":
+			u.Type = ""
+		case "phone":
+			u.Phone = ""
+		case "whatsapp":
+			u.Whatsapp = ""
+		case "telegram":
+			u.Telegram = ""
+		case "":
+		default:
+			break state
+		}
+
+		if data.CallbackMap[buttons.Change] != "" {
+			delete(data.CallbackMap, buttons.Change)
+			err = t.svc.auth.SetSomething(ctx, data.UserID, func(old *user.User) error {
+				*old = *u
+
+				return nil
+			})
+			if err != nil {
+				err = fmt.Errorf("changing user data: %w", err)
+				return
+			}
+		}
+
+		answer := data.CallbackMap[buttons.Confirm]
+		switch answer {
+		case "yes":
+		case "no":
+			opt = inline.SendMessageOpts(
+				inline.Text("Изменить фамилию", models.Pair(buttons.Change, "first_name"), callbackEndpoint),
+				inline.Text("Изменить имя: %s\n", models.Pair(buttons.Change, "last_name"), callbackEndpoint),
+				inline.Text("Изменить отчество", models.Pair(buttons.Change, "surname"), callbackEndpoint),
+				inline.Text("Изменить тип аккаунта", models.Pair(buttons.Change, "user_type"), callbackEndpoint),
+				inline.Text("Изменить телефон", models.Pair(buttons.Change, "phone"), callbackEndpoint),
+				inline.Text("Изменить whatsapp", models.Pair(buttons.Change, "whatsapp"), callbackEndpoint),
+				inline.Text("Изменить telegram", models.Pair(buttons.Change, "telegram"), callbackEndpoint),
+			)
+
+		default:
+			u, err = t.svc.auth.GetFromSession(ctx, data.UserID)
+			if err != nil {
+				err = fmt.Errorf("getting from session: %w", err)
+				return
+			}
+			if u == nil {
+				err = fmt.Errorf("user not found")
+				return
+			}
+
+			typeUser := func(t user.Type) string {
+				switch t {
+				case user.TypeCustomer:
+					return "Я покупатель"
+				case user.TypeSupplier:
+					return "Я продавец"
+				default:
+					return ""
+				}
+			}
+
+			replyMessage = "Проверьте пожалуйста ваши данные\n"
+			replyMessage += fmt.Sprintf("Фамилие: %s\n", u.LastName)
+			replyMessage += fmt.Sprintf("Имя: %s\n", u.FirstName)
+			replyMessage += fmt.Sprintf("Отчество: %s\n", u.FirstName)
+			replyMessage += fmt.Sprintf("Тип аккаунта: %s\n", typeUser(u.Type))
+			replyMessage += fmt.Sprintf("Телефон: %s\n", u.FirstName)
+			replyMessage += fmt.Sprintf("WhatsApp: %s\n", u.Whatsapp)
+			replyMessage += fmt.Sprintf("Telegram: %s\n", u.Telegram)
+
+			opt = inline.SendMessageOpts(
+				inline.Text(
+					"Все верно",
+					models.Pair(buttons.Confirm, "yes"),
+					callbackEndpoint,
+				),
+				inline.Text(
+					"Изменить",
+					models.Pair(buttons.Confirm, "no"),
+					callbackEndpoint,
+				),
+			)
+		}
 	}
 
-	return nil
-}
-
-func (t *Telegram) handlerEditName(c tele.Context) error {
-	if err := t.repo.state.Set(getContext(c), c.Sender().ID, StateWaitingForName); err != nil {
-		return fmt.Errorf("set user state: %w", err)
-	}
-	return c.Send("Пожалуйста, введите ваше ФИО заново", createMenu(constants.Back))
-}
-
-func (t *Telegram) handlerEditPhone(c tele.Context) error {
-	if err := t.repo.state.Set(getContext(c), c.Sender().ID, StateWaitingForPhone); err != nil {
-		return fmt.Errorf("set user state: %w", err)
-	}
-
-	contactButton := &tele.ReplyMarkup{ResizeKeyboard: true}
-	contactButton.Reply(
-		contactButton.Row(contactButton.Contact("Отправить номер телефона")),
-		contactButton.Row(contactButton.Text(constants.Back)),
-	)
-
-	return c.Send("Пожалуйста, поделитесь вашим номером телефона заново", contactButton)
-}
-
-func (t *Telegram) handlerConfirmRegistration(c tele.Context) error {
-	if err := t.repo.state.Delete(getContext(c), c.Sender().ID); err != nil {
-		return fmt.Errorf("set user state: %w", err)
-	}
-
-	return c.Send("Регистрация успешно завершена!", createMenu(constants.Home))
+	return
 }

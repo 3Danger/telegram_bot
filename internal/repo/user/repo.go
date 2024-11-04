@@ -1,30 +1,44 @@
 package user
 
 import (
-	"context"
 	"errors"
 	"time"
-)
 
-type Repo interface {
-	User(ctx context.Context, userID int64) (*User, error)
-	CreateUser(ctx context.Context, user User) error
-	UpdateUserContactTelegram(ctx context.Context, userID int64, telegram string) error
-	UpdateUserContactWhatsapp(ctx context.Context, userID int64, whatsapp string) error
-	UpdateUserContactPhone(ctx context.Context, userID int64, phone string) error
-}
+	"github.com/3Danger/telegram_bot/internal/repo/user/postgres/query"
+)
 
 var ErrUserNotFound = errors.New("user not found")
 
+type Type string
+
+func (t Type) String() string { return string(t) }
+
+func (t Type) Valid() bool {
+	switch t {
+	case TypeCustomer:
+		return true
+	case TypeSupplier:
+		return true
+	}
+
+	return false
+}
+
+const (
+	TypeUndefined = Type(query.UserTypeUndefined)
+	TypeCustomer  = Type(query.UserTypeCustomer)
+	TypeSupplier  = Type(query.UserTypeSupplier)
+)
+
 type User struct {
-	ID         int64
-	IsSupplier bool
-	FirstName  string
-	LastName   string
-	Surname    string
-	Phone      string
-	Whatsapp   string
-	Telegram   string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID        int64
+	Type      Type
+	FirstName string
+	LastName  string
+	Surname   string
+	Phone     string
+	Whatsapp  string
+	Telegram  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

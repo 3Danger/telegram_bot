@@ -9,97 +9,25 @@ import (
 	"context"
 )
 
-const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, is_supplier, first_name, last_name, surname)
-VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5
-)
+const delete = `-- name: Delete :exec
+DELETE FROM users WHERE id = $1
 `
 
-type CreateUserParams struct {
-	ID         int64
-	IsSupplier bool
-	FirstName  string
-	LastName   string
-	Surname    string
-}
-
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser,
-		arg.ID,
-		arg.IsSupplier,
-		arg.FirstName,
-		arg.LastName,
-		arg.Surname,
-	)
+func (q *Queries) Delete(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, delete, id)
 	return err
 }
 
-const updateUserContactPhone = `-- name: UpdateUserContactPhone :execrows
-UPDATE users SET phone = $1 WHERE id = $2
+const get = `-- name: Get :one
+SELECT id, user_type, first_name, last_name, surname, phone, whatsapp, telegram, created_at, updated_at FROM users WHERE id = $1
 `
 
-type UpdateUserContactPhoneParams struct {
-	Phone string
-	ID    int64
-}
-
-func (q *Queries) UpdateUserContactPhone(ctx context.Context, arg UpdateUserContactPhoneParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateUserContactPhone, arg.Phone, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const updateUserContactTelegram = `-- name: UpdateUserContactTelegram :execrows
-UPDATE users SET telegram = $1 WHERE id = $2
-`
-
-type UpdateUserContactTelegramParams struct {
-	Telegram string
-	ID       int64
-}
-
-func (q *Queries) UpdateUserContactTelegram(ctx context.Context, arg UpdateUserContactTelegramParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateUserContactTelegram, arg.Telegram, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const updateUserContactWhatsapp = `-- name: UpdateUserContactWhatsapp :execrows
-UPDATE users SET whatsapp = $1 WHERE id = $2
-`
-
-type UpdateUserContactWhatsappParams struct {
-	Whatsapp string
-	ID       int64
-}
-
-func (q *Queries) UpdateUserContactWhatsapp(ctx context.Context, arg UpdateUserContactWhatsappParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateUserContactWhatsapp, arg.Whatsapp, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const user = `-- name: User :one
-SELECT id, is_supplier, first_name, last_name, surname, phone, whatsapp, telegram, created_at, updated_at FROM users WHERE id = $1
-`
-
-func (q *Queries) User(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, user, id)
+func (q *Queries) Get(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, get, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.IsSupplier,
+		&i.UserType,
 		&i.FirstName,
 		&i.LastName,
 		&i.Surname,
@@ -110,4 +38,52 @@ func (q *Queries) User(ctx context.Context, id int64) (User, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const set = `-- name: Set :exec
+INSERT INTO users (id, user_type, first_name, last_name, surname, phone, whatsapp, telegram)
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8
+)
+ON CONFLICT (id) DO UPDATE SET
+    user_type = EXCLUDED.user_type,
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    surname = EXCLUDED.surname,
+    phone = EXCLUDED.phone,
+    whatsapp = EXCLUDED.whatsapp,
+    telegram = EXCLUDED.telegram,
+    updated_at = EXCLUDED.updated_at
+`
+
+type SetParams struct {
+	ID        int64
+	UserType  UserType
+	FirstName string
+	LastName  string
+	Surname   string
+	Phone     string
+	Whatsapp  string
+	Telegram  string
+}
+
+func (q *Queries) Set(ctx context.Context, arg SetParams) error {
+	_, err := q.db.Exec(ctx, set,
+		arg.ID,
+		arg.UserType,
+		arg.FirstName,
+		arg.LastName,
+		arg.Surname,
+		arg.Phone,
+		arg.Whatsapp,
+		arg.Telegram,
+	)
+	return err
 }

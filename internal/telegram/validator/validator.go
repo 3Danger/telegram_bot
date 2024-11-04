@@ -1,9 +1,9 @@
-package media
+package validator
 
 import (
 	"time"
 
-	tele "gopkg.in/telebot.v4"
+	tele "github.com/PaulSonOfLars/gotgbot/v2"
 )
 
 type Bound[T int | int64 | time.Duration] struct {
@@ -17,22 +17,22 @@ func NewBound[T int | int64 | time.Duration](min, max T) Bound[T] {
 	}
 }
 
-type Validator struct {
-	photoResolution Bound[int]
+type MediaValidator struct {
+	photoResolution Bound[int64]
 	photoFileSize   Bound[int64]
-	videoResolution Bound[int]
+	videoResolution Bound[int64]
 	videoFileSize   Bound[int64]
 	videoDuration   Bound[time.Duration]
 }
 
-func NewValidator(
-	photoResolution Bound[int],
+func New(
+	photoResolution Bound[int64],
 	photoFileSize Bound[int64],
-	videoResolution Bound[int],
+	videoResolution Bound[int64],
 	videoFileSize Bound[int64],
 	videoDuration Bound[time.Duration],
-) *Validator {
-	return &Validator{
+) *MediaValidator {
+	return &MediaValidator{
 		photoResolution: photoResolution,
 		photoFileSize:   photoFileSize,
 		videoResolution: videoResolution,
@@ -65,7 +65,7 @@ var (
 	ErrPhotoFileSizeIsTooSmall = newErr("the photo file size is too small", false)
 )
 
-func (v *Validator) ValidatePhoto(f *tele.Photo) error {
+func (v *MediaValidator) ValidatePhoto(f *tele.PhotoSize) error {
 	switch {
 	case v.photoResolution.Max < f.Height:
 		return ErrPhotoIsTooBigInHeight
@@ -98,7 +98,7 @@ var (
 	ErrVideoFileDurationIsTooShort = newErr("the video duration is too short", true)
 )
 
-func (v *Validator) ValidateVideo(f *tele.Video) error {
+func (v *MediaValidator) ValidateVideo(f *tele.Video) error {
 	switch {
 	case v.videoResolution.Max < f.Height:
 		return ErrVideoIsTooBigInHeight
@@ -106,7 +106,7 @@ func (v *Validator) ValidateVideo(f *tele.Video) error {
 		return ErrVideoIsTooBigInWidth
 	case v.videoFileSize.Max < f.FileSize:
 		return ErrVideoFileSizeIsTooBig
-	case int(v.videoDuration.Max.Seconds()) < f.Duration:
+	case int64(v.videoDuration.Max.Seconds()) < f.Duration:
 		return ErrVideoFileDurationIsTooLong
 	}
 
@@ -117,25 +117,25 @@ func (v *Validator) ValidateVideo(f *tele.Video) error {
 		return ErrVideoIsTooSmallInWidth
 	case v.videoFileSize.Min > f.FileSize:
 		return ErrVideoFileSizeIsTooSmall
-	case int(v.videoDuration.Min.Seconds()) > f.Duration:
+	case int64(v.videoDuration.Min.Seconds()) > f.Duration:
 		return ErrVideoFileDurationIsTooShort
 	}
 
 	return nil
 }
 
-func (v *Validator) ValidateVideoNote(f *tele.VideoNote) error {
+func (v *MediaValidator) ValidateVideoNote(f *tele.VideoNote) error {
 	switch {
 	case v.videoFileSize.Max < f.FileSize:
 		return ErrVideoFileSizeIsTooBig
-	case int(v.videoDuration.Max.Seconds()) < f.Duration:
+	case int64(v.videoDuration.Max.Seconds()) < f.Duration:
 		return ErrVideoFileDurationIsTooLong
 	}
 
 	switch {
 	case v.videoFileSize.Min > f.FileSize:
 		return ErrVideoFileSizeIsTooSmall
-	case int(v.videoDuration.Min.Seconds()) > f.Duration:
+	case int64(v.videoDuration.Min.Seconds()) > f.Duration:
 		return ErrVideoFileDurationIsTooShort
 	}
 

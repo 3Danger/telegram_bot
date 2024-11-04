@@ -1,23 +1,27 @@
--- name: CreateUser :exec
-INSERT INTO users (id, is_supplier, first_name, last_name, surname)
+-- name: Set :exec
+INSERT INTO users (id, user_type, first_name, last_name, surname, phone, whatsapp, telegram)
 VALUES (
         @id,
-        @is_supplier,
+        @user_type,
         @first_name,
         @last_name,
-        @surname
-);
+        @surname,
+        @phone,
+        @whatsapp,
+        @telegram
+)
+ON CONFLICT (id) DO UPDATE SET
+    user_type = EXCLUDED.user_type,
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    surname = EXCLUDED.surname,
+    phone = EXCLUDED.phone,
+    whatsapp = EXCLUDED.whatsapp,
+    telegram = EXCLUDED.telegram,
+    updated_at = EXCLUDED.updated_at;
 
--- name: UpdateUserContactTelegram :execrows
-UPDATE users SET telegram = @telegram WHERE id = @id;
-
--- name: UpdateUserContactWhatsapp :execrows
-UPDATE users SET whatsapp = @whatsapp WHERE id = @id;
-
--- name: UpdateUserContactPhone :execrows
-UPDATE users SET phone = @phone WHERE id = @id;
-
--- name: User :one
+-- name: Get :one
 SELECT * FROM users WHERE id = @id;
 
-
+-- name: Delete :exec
+DELETE FROM users WHERE id = @id;

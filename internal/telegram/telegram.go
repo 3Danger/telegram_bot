@@ -2,86 +2,89 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"time"
 
+	tele "github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/rs/zerolog"
-	tele "gopkg.in/telebot.v4"
 
 	"github.com/3Danger/telegram_bot/internal/config"
-	cs "github.com/3Danger/telegram_bot/internal/repo/chain-states"
-	"github.com/3Danger/telegram_bot/internal/repo/state"
+	"github.com/3Danger/telegram_bot/internal/repo"
 	"github.com/3Danger/telegram_bot/internal/repo/user"
-	"github.com/3Danger/telegram_bot/internal/telegram/constants"
-	"github.com/3Danger/telegram_bot/internal/telegram/media"
+	"github.com/3Danger/telegram_bot/internal/services/auth"
+	"github.com/3Danger/telegram_bot/internal/telegram/middlewares"
+	"github.com/3Danger/telegram_bot/internal/telegram/validator"
 )
 
 type Telegram struct {
 	bot *tele.Bot
 
-	routeOnLastStateMap map[string]tele.HandlerFunc
-
-	cnf  config.Telegram
-	v    *media.Validator
-	repo repo
+	cnf       config.Telegram
+	validator *validator.MediaValidator
+	svc       Services
+	repo      Repo
 }
 
-type repo struct {
-	user        user.Repo
-	state       state.Repo
-	chainStates cs.Repo
+type Services struct {
+	auth *auth.Service
+}
+
+type Repo struct {
+	user    repo.Repo[user.User]
+	state   repo.Repo[string]
+	command repo.Repo[string]
 }
 
 func New(
-	ctx context.Context,
 	cnf config.Telegram,
-	userRepo user.Repo,
-	stateRepo state.Repo,
-	csRepo cs.Repo,
+	userRepo repo.Repo[user.User],
+	stateRepo repo.Repo[string],
+	commandRepo repo.Repo[string],
+	auth *auth.Service,
 ) (*Telegram, error) {
 	bot, err := configureBot(cnf)
 	if err != nil {
 		return nil, err
 	}
 
-	const megaByte = 1024 * 1024
-
-	mediaValidator := media.NewValidator(
-		media.NewBound[int](1024, 8192),
-		media.NewBound[int64](megaByte/10, megaByte*10),
-		media.NewBound[int](480, 2592),
-		media.NewBound[int64](0, megaByte*15),
-		media.NewBound[time.Duration](time.Second*15, time.Second*60),
-	)
-
 	svc := &Telegram{
-		bot:                 bot,
-		cnf:                 cnf,
-		routeOnLastStateMap: make(map[string]tele.HandlerFunc),
-		repo: repo{
-			user:        userRepo,
-			state:       stateRepo,
-			chainStates: csRepo,
+		bot: bot,
+		cnf: cnf,
+		repo: Repo{
+			user:    userRepo,
+			state:   stateRepo,
+			command: commandRepo,
 		},
-		v: mediaValidator,
-	}
-
-	if err = svc.configureRoute(ctx); err != nil {
-		return nil, fmt.Errorf("configure telegram routes: %w", err)
+		validator: configureMediaValidator(),
+		svc:       Services{auth: auth},
 	}
 
 	return svc, nil
 }
 
+func configureMediaValidator() *validator.MediaValidator {
+	const megaByte = 1024 * 1024
+
+	return validator.New(
+		validator.NewBound[int64](1024, 8192),
+		validator.NewBound[int64](megaByte/10, megaByte*10),
+		validator.NewBound[int64](480, 2592),
+		validator.NewBound[int64](0, megaByte*15),
+		validator.NewBound[time.Duration](time.Second*15, time.Second*60),
+	)
+}
+
 func configureBot(cnf config.Telegram) (*tele.Bot, error) {
-	bot, err := tele.NewBot(tele.Settings{
-		Token:  cnf.Token,
-		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
-		//Verbose: cnf.Debug,
-		Verbose: false,
-		OnError: onError,
-	})
+	opts := &tele.BotOpts{
+		BotClient:         nil,
+		DisableTokenCheck: false,
+		RequestOpts: &tele.RequestOpts{
+			Timeout: time.Second * 30,
+			APIURL:  "",
+		},
+	}
+	bot, err := tele.NewBot(cnf.Token, opts)
 	if err != nil {
 		return nil, fmt.Errorf("create new telegram bot: %w", err)
 	}
@@ -89,96 +92,63 @@ func configureBot(cnf config.Telegram) (*tele.Bot, error) {
 	return bot, nil
 }
 
-func onError(err error, c tele.Context) {
-	l, ok := c.Get("zerolog").(zerolog.Logger)
-	if !ok {
-		l = zerolog.New(os.Stdout)
-		l.Error().Msg("DEFAULT LOGGER")
-	}
-
-	l.Err(err).Interface("message", c.Message()).Send()
-}
-
-// routeByLastState Если роут общий (на пример при выгрузке фото)
-// то запрос будет перенаправлен к предыдущему хендлеру для обработки данного медиа
-func (t *Telegram) routeByLastState(c tele.Context) error {
-	state, err := t.repo.chainStates.LastState(getContext(c), c.Sender().ID)
-	if err != nil {
-		return fmt.Errorf("getting last state: %w", err)
-	}
-
-	hander, ok := t.routeOnLastStateMap[state]
-	if !ok {
-		return c.Send("не верная команда", createMenu(constants.Home))
-	}
-
-	return hander(c)
-}
-
-// Обновляем configureRoute для добавления нового обработчика
-func (t *Telegram) configureRoute(ctx context.Context) error {
-	t.routeOnLastStateMap = map[string]tele.HandlerFunc{
-		//constants.Home:
-		//constants.Auth:
-		//constants.ImSupplier:
-		//constants.ImCustomer:
-		//constants.Back:
-		//constants.AuthConfirm:
-		//constants.AuthEditName:
-		//constants.AuthEditPhone:
-		//constants.CustomerShowItems:
-		//constants.SupplierShowItems:
-		constants.SupplierPostItems: t.handlerSupplierPostItems,
-	}
-
-	t.bot.Use(
-		middlewareContext(ctx),
-		middlewareFilterBot(),
-		t.middlewareSaveLastState(),
-	)
-
-	start := t.bot.Group()
-	{
-		start.Handle("/start", t.handlerHome)
-		start.Handle(constants.Home, t.handlerHome)
-	}
-
-	supplier := t.bot.Group()
-	{
-		supplier.Handle(constants.SupplierShowItems, t.handlerSupplierShowItems)
-		supplier.Handle(constants.SupplierPostItems, t.handlerSupplierPostItems)
-
-		//TODO Мне не нравится что эндпоинты (tele.OnPhoto, tele.OnMedia) "всеядные",
-		// нужен какой то единый конструктор который будет разделять по под-эндпоинтам
-		supplier.Handle(tele.OnVideo, t.routeByLastState)
-		supplier.Handle(tele.OnVideoNote, t.routeByLastState)
-		supplier.Handle(tele.OnPhoto, t.routeByLastState)
-		supplier.Handle(tele.OnMedia, t.routeByLastState)
-	}
-	customer := t.bot.Group()
-	{
-		customer.Handle(constants.CustomerShowItems, t.handlerCustomerHome)
-	}
-
-	auth := t.bot.Group()
-	{
-		// Обработка команд редактирования
-		auth.Handle(constants.Auth, t.handlerAuth)
-		auth.Handle(tele.OnText, t.handlerAuth)
-		auth.Handle(tele.OnContact, t.handlerAuth)
-		auth.Handle(constants.Back, t.handlerBackNavigation)
-		auth.Handle(constants.AuthEditName, t.handlerEditName)
-		auth.Handle(constants.AuthEditPhone, t.handlerEditPhone)
-		auth.Handle(constants.AuthConfirm, t.handlerConfirmRegistration)
-	}
-
-	return nil
-}
-
 func (t *Telegram) Start(ctx context.Context) error {
-	t.bot.Start()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-	<-ctx.Done()
+	t.bot.BotClient = middlewares.New(t.bot.BotClient)
 
-	return nil
+	opts := &tele.GetUpdatesOpts{
+		Offset:         0,
+		Limit:          0,
+		Timeout:        60,
+		AllowedUpdates: nil,
+		RequestOpts:    nil,
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			updates, err := t.bot.GetUpdatesWithContext(ctx, opts)
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					continue
+				}
+				zerolog.Ctx(ctx).Err(err).Msg("getting updates")
+				continue
+			}
+
+			for _, update := range updates {
+				opts.Offset = max(update.UpdateId+1, opts.Offset)
+
+				err = t.updateProcessor(ctx, update)
+
+				if auth.IsValidationErr(err) {
+					if _, err := t.bot.SendMessage(getChatID(update), err.Error(), nil); err != nil {
+						zerolog.Ctx(ctx).Err(err).Msg("sending message")
+					}
+
+					continue
+				}
+
+				if err != nil {
+					zerolog.Ctx(ctx).Err(err).Msg("processing update")
+				}
+			}
+		}
+	}
+
+}
+
+func getChatID(update tele.Update) int64 {
+	if m := update.Message; m != nil {
+		return m.Chat.Id
+	}
+	if c := update.CallbackQuery; c != nil {
+		return c.Message.GetMessageId()
+	}
+
+	return 0
 }
