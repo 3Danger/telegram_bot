@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/golang/groupcache/lru"
-	"github.com/samber/lo"
 
 	r "github.com/3Danger/telegram_bot/internal/repo"
 )
+
+var _ r.Repo[struct{}] = &repo[struct{}]{}
 
 type repo[T any] struct {
 	data *lru.Cache
@@ -19,13 +20,14 @@ func NewRepo[T any](maxItems int) r.Repo[T] {
 	}
 }
 
-func (r *repo[T]) Get(_ context.Context, userID int64) (*T, error) {
+func (r *repo[T]) Get(_ context.Context, userID int64) (T, error) {
 	s, ok := r.data.Get(userID)
 	if !ok {
-		return nil, nil
+		var t T
+		return t, nil
 	}
 
-	return lo.ToPtr(s.(T)), nil
+	return s.(T), nil
 }
 
 func (r *repo[T]) Set(_ context.Context, userID int64, state T) error {

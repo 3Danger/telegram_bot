@@ -10,69 +10,64 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/3Danger/telegram_bot/internal/config"
-	"github.com/3Danger/telegram_bot/internal/repo"
-	"github.com/3Danger/telegram_bot/internal/repo/user"
-	"github.com/3Danger/telegram_bot/internal/services/auth"
+	chain_states "github.com/3Danger/telegram_bot/internal/repo/chain-states"
+	userpg "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
+	//"github.com/3Danger/telegram_bot/internal/telegram/handlers/auth"
+
+	//"github.com/3Danger/telegram_bot/internal/telegram/handlers/auth"
 	"github.com/3Danger/telegram_bot/internal/telegram/middlewares"
+	"github.com/3Danger/telegram_bot/internal/telegram/models"
+	"github.com/3Danger/telegram_bot/internal/telegram/sender"
 	"github.com/3Danger/telegram_bot/internal/telegram/validator"
 )
 
+type Handler interface {
+	Handle(context.Context, models.Request) error
+}
+
 type Telegram struct {
-	bot *tele.Bot
+	bot    *tele.Bot
+	sender *sender.Sender
+
+	router map[string]Handler
 
 	cnf       config.Telegram
 	validator *validator.MediaValidator
-	svc       Services
 	repo      Repo
 }
 
-type Services struct {
-	auth *auth.Service
-}
-
 type Repo struct {
-	user    repo.Repo[user.User]
-	state   repo.Repo[string]
-	command repo.Repo[string]
+	user  userpg.Querier
+	chain chain_states.Repo
 }
 
 func New(
 	cnf config.Telegram,
-	userRepo repo.Repo[user.User],
-	stateRepo repo.Repo[string],
-	commandRepo repo.Repo[string],
-	auth *auth.Service,
+	userRepo userpg.Querier,
+	repoChainStates chain_states.Repo,
 ) (*Telegram, error) {
 	bot, err := configureBot(cnf)
 	if err != nil {
 		return nil, err
 	}
 
+	sender := sender.New(bot)
+
 	svc := &Telegram{
-		bot: bot,
-		cnf: cnf,
+		bot:    bot,
+		sender: sender,
+		cnf:    cnf,
+		router: make(map[string]Handler),
 		repo: Repo{
-			user:    userRepo,
-			state:   stateRepo,
-			command: commandRepo,
+			user:  userRepo,
+			chain: repoChainStates,
 		},
-		validator: configureMediaValidator(),
-		svc:       Services{auth: auth},
+		validator: validator.Default(),
 	}
 
+	svc.configureRoutes()
+
 	return svc, nil
-}
-
-func configureMediaValidator() *validator.MediaValidator {
-	const megaByte = 1024 * 1024
-
-	return validator.New(
-		validator.NewBound[int64](1024, 8192),
-		validator.NewBound[int64](megaByte/10, megaByte*10),
-		validator.NewBound[int64](480, 2592),
-		validator.NewBound[int64](0, megaByte*15),
-		validator.NewBound[time.Duration](time.Second*15, time.Second*60),
-	)
 }
 
 func configureBot(cnf config.Telegram) (*tele.Bot, error) {
@@ -124,22 +119,12 @@ func (t *Telegram) Start(ctx context.Context) error {
 				opts.Offset = max(update.UpdateId+1, opts.Offset)
 
 				err = t.updateProcessor(ctx, update)
-
-				if auth.IsValidationErr(err) {
-					if _, err := t.bot.SendMessage(getChatID(update), err.Error(), nil); err != nil {
-						zerolog.Ctx(ctx).Err(err).Msg("sending message")
-					}
-
-					continue
-				}
-
 				if err != nil {
 					zerolog.Ctx(ctx).Err(err).Msg("processing update")
 				}
 			}
 		}
 	}
-
 }
 
 func getChatID(update tele.Update) int64 {

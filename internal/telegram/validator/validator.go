@@ -6,6 +6,18 @@ import (
 	tele "github.com/PaulSonOfLars/gotgbot/v2"
 )
 
+func Default() *MediaValidator {
+	const megaByte = 1024 * 1024
+
+	return New(
+		NewBound[int64](1024, 8192),
+		NewBound[int64](megaByte/10, megaByte*10),
+		NewBound[int64](480, 2592),
+		NewBound[int64](0, megaByte*15),
+		NewBound[time.Duration](time.Second*15, time.Second*60),
+	)
+}
+
 type Bound[T int | int64 | time.Duration] struct {
 	Max, Min T
 }
@@ -47,7 +59,8 @@ type Err struct {
 }
 
 func (e *Err) Error() string { return e.msg }
-func (e *Err) TooBig() bool  { return e.tooBig }
+
+func (e *Err) TooBig() bool { return e.tooBig }
 
 func newErr(msg string, tooBig bool) error {
 	return &Err{

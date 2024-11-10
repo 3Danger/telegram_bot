@@ -25,7 +25,6 @@ func (r *repo) Push(ctx context.Context, userID int64, state string) error {
 	curListAny, ok := r.data.Get(userID)
 	if ok {
 		l = curListAny.(*list.List)
-		r.data.Remove(userID)
 	} else {
 		l = list.New().Init()
 	}

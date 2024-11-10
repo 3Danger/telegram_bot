@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.27.0
 
-package query
+package postgres
 
 import (
 	"database/sql/driver"
@@ -13,9 +13,9 @@ import (
 type UserType string
 
 const (
-	UserTypeUndefined UserType = "undefined"
-	UserTypeSupplier  UserType = "supplier"
-	UserTypeCustomer  UserType = "customer"
+	UserTypeValue0   UserType = ""
+	UserTypeSupplier UserType = "supplier"
+	UserTypeCustomer UserType = "customer"
 )
 
 func (e *UserType) Scan(src interface{}) error {
@@ -31,8 +31,8 @@ func (e *UserType) Scan(src interface{}) error {
 }
 
 type NullUserType struct {
-	UserType UserType
-	Valid    bool // Valid is true if UserType is not NULL
+	UserType UserType `json:"user_type"`
+	Valid    bool     `json:"valid"` // Valid is true if UserType is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -55,21 +55,19 @@ func (ns NullUserType) Value() (driver.Value, error) {
 
 // Все пользователи
 type User struct {
-	ID int64
+	ID int64 `json:"id"`
 	// Тип пользователя
-	UserType UserType
+	UserType UserType `json:"user_type"`
 	// Имя
-	FirstName string
+	FirstName string `json:"first_name"`
 	// Фамилия
-	LastName string
-	// Отчество
-	Surname string
+	LastName string `json:"last_name"`
 	// Телефон
-	Phone string
-	// Номер whatsapp
-	Whatsapp string
+	Phone string `json:"phone"`
 	// Ник в телеграмме
-	Telegram  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	TgNick string `json:"tg_nick"`
+	// Доп. контакты, инфо
+	Additional string    `json:"additional"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }

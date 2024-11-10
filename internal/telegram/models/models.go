@@ -1,104 +1,82 @@
 package models
 
 import (
-	"strings"
-
 	tele "github.com/PaulSonOfLars/gotgbot/v2"
+
+	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons"
+	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons/callback"
 )
 
-type Data struct {
-	UserID      int64
-	ChatID      int64
-	Message     string
-	CallbackMap map[string]string
+type Request struct {
+	userID   int64
+	chatID   int64
+	message  string
+	callback *callback.Callback
+	contact  *Contact
 }
 
-const (
-	expSeparator  = "|"
-	pairSeparator = "="
-)
-
-type Pair map[string]string
-
-func (p Pair) With(k, v string) Pair {
-	cp := p.Clone()
-	if cp == nil {
-		cp = make(Pair)
-	}
-
-	cp[k] = v
-	return cp
+type Contact struct {
+	PhoneNumber string
+	FirstName   string
+	LastName    string
+	UserId      int64
 }
 
-func (p Pair) Clone() Pair {
-	cp := make(Pair, len(p))
-	for k, v := range p {
-		cp[k] = v
-	}
-
-	return cp
-}
-
-func NewCallback(data Pair) string {
-	if len(data) == 0 {
-		return ""
-	}
-
-	rows := make([]string, 0, len(data))
-	for k, v := range data {
-		if v != "" {
-			rows = append(rows, k+pairSeparator+v)
-			continue
-		}
-		rows = append(rows, k)
-	}
-
-	return strings.Join(rows, expSeparator)
-}
-
-func NewMessage(update tele.Update) Data {
-	msg := Data{}
-
-	if um := update.Message; um != nil {
-		msg.ChatID = um.Chat.Id
-		if um.From != nil {
-			msg.UserID = um.From.Id
-		}
-		msg.Message = um.Text
-	}
+func NewRequest(update tele.Update) Request {
+	msg := Request{}
 
 	cbData := ""
 	if cb := update.CallbackQuery; cb != nil {
-		msg.ChatID = cb.Message.GetChat().Id
-		msg.UserID = cb.From.Id
+		msg.chatID = cb.Message.GetChat().Id
+		msg.userID = cb.From.Id
 		cbData = cb.Data
 	}
 
-	msg.CallbackMap = extractCallback(cbData)
+	msg.callback = callback.FromString(cbData)
+
+	if um := update.Message; um != nil {
+		if contact := um.Contact; contact != nil {
+			msg.contact = &Contact{
+				PhoneNumber: contact.PhoneNumber,
+				FirstName:   contact.FirstName,
+				LastName:    contact.LastName,
+				UserId:      contact.UserId,
+			}
+		}
+
+		msg.chatID = um.Chat.Id
+		if um.From != nil {
+			msg.userID = um.From.Id
+		}
+		if um.Text == buttons.Home.Button().Url {
+			msg.callback.SetEndpoint(buttons.Home.Button().Url)
+		}
+		msg.message = um.Text
+	}
 
 	return msg
 }
 
-func extractCallback(data string) Pair {
-	rows := strings.Split(data, expSeparator)
+func (r *Request) Contact() *Contact {
+	return r.contact
+}
 
-	var (
-		callbackMap = make(map[string]string, len(rows))
-	)
+func (r *Request) Endpoint() string {
+	return r.callback.Endpoint()
+}
 
-	for _, row := range rows {
-		item := strings.Split(row, pairSeparator)
-		if len(item) == 0 || item[0] == "" {
-			continue
-		}
+func (r *Request) Value(key string) string {
+	return r.callback.Value(key)
+}
 
-		if len(item) == 1 {
-			callbackMap[item[0]] = ""
-			continue
-		}
+func (r *Request) UserID() int64 {
+	return r.userID
+}
 
-		callbackMap[item[0]] = item[1]
-	}
+func (r *Request) ChatID() int64 {
+	return r.chatID
+}
 
-	return callbackMap
+func (r *Request) Message() string {
+	return r.message
 }

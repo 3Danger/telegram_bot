@@ -8,7 +8,6 @@ import (
 
 	"github.com/3Danger/telegram_bot/internal/build"
 	"github.com/3Danger/telegram_bot/internal/config"
-	"github.com/3Danger/telegram_bot/internal/services/auth"
 	"github.com/3Danger/telegram_bot/internal/telegram"
 )
 
@@ -33,20 +32,13 @@ func runBot(ctx context.Context, b *build.Build) error {
 
 	var (
 		repoPermanentUser = b.RepoUserPermanent()
-		repoSessionUser   = b.RepoUserSession()
-		repoState         = b.RepoState()
-		repoCommand       = b.RepoState()
-		//repoChainStates = b.RepoChainStates()
+		repoChainStates   = b.RepoChainStates()
 	)
-
-	svcAuth := auth.NewService(repoPermanentUser, repoSessionUser)
 
 	tg, err := telegram.New(
 		cnf.Telegram,
 		repoPermanentUser,
-		repoState,
-		repoCommand,
-		svcAuth,
+		repoChainStates,
 	)
 	if err != nil {
 		return fmt.Errorf("creating telegram client: %w", err)
