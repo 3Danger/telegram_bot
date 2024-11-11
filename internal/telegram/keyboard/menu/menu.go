@@ -6,21 +6,21 @@ import (
 	"github.com/3Danger/telegram_bot/internal/telegram/keyboard"
 )
 
-type MenuInline struct {
+type Inline struct {
 	buttons [][]keyboard.InlineButton
 }
 
-func NewInline(row ...keyboard.InlineButton) *MenuInline {
-	return &MenuInline{buttons: [][]keyboard.InlineButton{row}}
+func NewInline(row ...keyboard.InlineButton) *Inline {
+	return &Inline{buttons: [][]keyboard.InlineButton{row}}
 }
 
-func (m *MenuInline) Add(row ...keyboard.InlineButton) *MenuInline {
+func (m *Inline) Add(row ...keyboard.InlineButton) *Inline {
 	m.buttons = append(m.buttons, row)
 
 	return m
 }
 
-func (m *MenuInline) Menu() *tele.SendMessageOpts {
+func (m *Inline) Menu() *tele.SendMessageOpts {
 	inlineKeyboard := make([][]tele.InlineKeyboardButton, len(m.buttons))
 	for i, row := range m.buttons {
 		inlineKeyboard[i] = make([]tele.InlineKeyboardButton, len(row))
@@ -28,38 +28,56 @@ func (m *MenuInline) Menu() *tele.SendMessageOpts {
 			inlineKeyboard[i][j] = button.Button()
 		}
 	}
+
 	return &tele.SendMessageOpts{
-		ReplyMarkup: tele.InlineKeyboardMarkup{InlineKeyboard: inlineKeyboard},
+		BusinessConnectionId: "",
+		MessageThreadId:      0,
+		ParseMode:            "",
+		Entities:             nil,
+		LinkPreviewOptions:   nil,
+		DisableNotification:  false,
+		ProtectContent:       false,
+		AllowPaidBroadcast:   false,
+		MessageEffectId:      "",
+		ReplyParameters:      nil,
+		ReplyMarkup:          tele.InlineKeyboardMarkup{InlineKeyboard: inlineKeyboard},
+		RequestOpts:          nil,
 	}
 }
 
-type MenuReply struct {
+type Reply struct {
 	buttons         [][]keyboard.ReplyButton
 	oneTimeKeyboard bool
 	persistent      bool
 }
 
-func NewReply(row ...keyboard.ReplyButton) *MenuReply {
-	return &MenuReply{buttons: [][]keyboard.ReplyButton{row}}
+func NewReply(row ...keyboard.ReplyButton) *Reply {
+	return &Reply{
+		buttons:         [][]keyboard.ReplyButton{row},
+		oneTimeKeyboard: false,
+		persistent:      false,
+	}
 }
 
-func (m *MenuReply) Add(row ...keyboard.ReplyButton) *MenuReply {
+func (m *Reply) Add(row ...keyboard.ReplyButton) *Reply {
 	m.buttons = append(m.buttons, row)
 
 	return m
 }
 
-func (m *MenuReply) OneTime(is bool) *MenuReply {
+func (m *Reply) OneTime(is bool) *Reply {
 	m.oneTimeKeyboard = is
+
 	return m
 }
 
-func (m *MenuReply) Persistent(is bool) *MenuReply {
+func (m *Reply) Persistent(is bool) *Reply {
 	m.persistent = is
+
 	return m
 }
 
-func (m *MenuReply) Menu() *tele.SendMessageOpts {
+func (m *Reply) Menu() *tele.SendMessageOpts {
 	replyKeyboard := make([][]tele.KeyboardButton, len(m.buttons))
 	for i, row := range m.buttons {
 		replyKeyboard[i] = make([]tele.KeyboardButton, len(row))
@@ -67,7 +85,18 @@ func (m *MenuReply) Menu() *tele.SendMessageOpts {
 			replyKeyboard[i][j] = button.Button()
 		}
 	}
+
 	return &tele.SendMessageOpts{
+		BusinessConnectionId: "",
+		MessageThreadId:      0,
+		ParseMode:            "",
+		Entities:             nil,
+		LinkPreviewOptions:   nil,
+		DisableNotification:  false,
+		ProtectContent:       false,
+		AllowPaidBroadcast:   false,
+		MessageEffectId:      "",
+		ReplyParameters:      nil,
 		ReplyMarkup: tele.ReplyKeyboardMarkup{
 			Keyboard:              replyKeyboard,
 			IsPersistent:          m.persistent,
@@ -76,5 +105,6 @@ func (m *MenuReply) Menu() *tele.SendMessageOpts {
 			InputFieldPlaceholder: "testtesttesttest",
 			Selective:             false,
 		},
+		RequestOpts: nil,
 	}
 }

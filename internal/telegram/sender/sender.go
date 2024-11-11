@@ -1,6 +1,8 @@
 package sender
 
 import (
+	"fmt"
+
 	tele "github.com/PaulSonOfLars/gotgbot/v2"
 
 	"github.com/3Danger/telegram_bot/internal/telegram/keyboard"
@@ -17,7 +19,9 @@ func New(bot *tele.Bot) *Sender {
 }
 
 func (s *Sender) Send(chatID int64, msg string, menu keyboard.Menu) error {
-	_, err := s.bot.SendMessage(chatID, msg, menu.Menu())
+	if _, err := s.bot.SendMessage(chatID, msg, menu.Menu()); err != nil {
+		return fmt.Errorf("sending message: %w", err)
+	}
 
-	return err
+	return nil
 }

@@ -29,8 +29,11 @@ func New(ctx context.Context) (*Build, error) {
 	return builder, nil
 }
 
-func createBuilder(ctx context.Context, cnf *config.Config) (b *Build, err error) {
-	b = new(Build)
+func createBuilder(ctx context.Context, cnf *config.Config) (*Build, error) {
+	var (
+		err error
+		b   = new(Build)
+	)
 
 	if b.db, err = pgx.Connect(ctx, cnf.Repo.Postgres.DSN()); err != nil {
 		return nil, fmt.Errorf("creating postgres db: %w", err)

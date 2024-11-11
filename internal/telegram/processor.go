@@ -10,7 +10,6 @@ import (
 
 	"github.com/3Danger/telegram_bot/internal/telegram/handlers/auth"
 	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons"
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/menu"
 	"github.com/3Danger/telegram_bot/internal/telegram/models"
 )
 
@@ -19,7 +18,7 @@ func (t *Telegram) configureRoutes() {
 }
 
 func (t *Telegram) updateProcessor(ctx context.Context, update tele.Update) error {
-	fmt.Println(string(lo.Must(json.MarshalIndent(update, "", "\t"))))
+	fmt.Println(string(lo.Must(json.MarshalIndent(update, "", "\t")))) //nolint:forbidigo
 
 	msg := models.NewRequest(update)
 
@@ -38,6 +37,7 @@ func (t *Telegram) messageProcessor(ctx context.Context, endpoint string, msg mo
 		if err != nil {
 			return fmt.Errorf("back-stepping: %w", err)
 		}
+
 		if key != "" {
 			return t.messageProcessor(ctx, key, msg)
 		}
@@ -60,31 +60,15 @@ func (t *Telegram) messageProcessor(ctx context.Context, endpoint string, msg mo
 		if !ok {
 			return t.messageProcessor(ctx, buttons.Back.Button().Url, msg)
 		}
+
 		if err := handler.Handle(ctx, msg); err != nil {
 			return fmt.Errorf("handle %s: %w", endpoint, err)
 		}
+
 		if err := t.repo.chain.Push(ctx, msg.UserID(), endpoint); err != nil {
 			return fmt.Errorf("saving command story: %w", err)
 		}
 
 		return nil
 	}
-
-	if err := t.handlerUndefined(msg); err != nil {
-		return fmt.Errorf("handling undefined message: %w", err)
-	}
-
-	return nil
-
-}
-
-func (t *Telegram) handlerUndefined(msg models.Request) error {
-	text := "Вы просите странного"
-	opt := menu.NewInline(buttons.Home)
-
-	if err := t.sender.Send(msg.ChatID(), text, opt); err != nil {
-		return fmt.Errorf("sending message: %w", err)
-	}
-
-	return nil
 }

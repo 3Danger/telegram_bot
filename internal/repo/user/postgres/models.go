@@ -64,8 +64,6 @@ type User struct {
 	LastName string `json:"last_name"`
 	// Телефон
 	Phone string `json:"phone"`
-	// Ник в телеграмме
-	TgNick string `json:"tg_nick"`
 	// Доп. контакты, инфо
 	Additional string    `json:"additional"`
 	CreatedAt  time.Time `json:"created_at"`

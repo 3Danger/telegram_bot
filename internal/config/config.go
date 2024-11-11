@@ -14,20 +14,18 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var config *Config
-
 func New() (*Config, error) {
-	config = new(Config)
+	config := new(Config)
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		panic(fmt.Errorf("getting current working directory: %v", err))
+		panic(fmt.Errorf("getting current working directory: %w", err))
 	}
 
 	envFilePath := filepath.Join(cwd, ".env")
 
 	if err = godotenv.Load(envFilePath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("loading .env file: %v", err)
+		return nil, fmt.Errorf("loading .env file: %w", err)
 	}
 
 	if err = envconfig.Process("", config); err != nil {
@@ -58,7 +56,7 @@ type Repo struct {
 }
 
 type InMemory struct {
-	MaxItems int `envconfig:"REPO_IN_MEMORY_MAX_ITEMS" default:"100"`
+	MaxItems int `default:"100" envconfig:"REPO_IN_MEMORY_MAX_ITEMS"`
 }
 
 type Postgres struct {
@@ -67,9 +65,9 @@ type Postgres struct {
 	Username string `envconfig:"REPO_POSTGRES_USERNAME" required:"true"`
 	Database string `envconfig:"REPO_POSTGRES_DATABASE" required:"true"`
 	Password string `envconfig:"REPO_POSTGRES_PASSWORD" required:"true"`
-	SSL      string `envconfig:"REPO_POSTGRES_SSL"      default:"disable"`
+	SSL      string `default:"disable"                  envconfig:"REPO_POSTGRES_SSL"`
 
-	OperationTimeout time.Duration `envconfig:"REPO_POSTGRES_OPERATION_TIMEOUT" default:"60s"`
+	OperationTimeout time.Duration `default:"60s" envconfig:"REPO_POSTGRES_OPERATION_TIMEOUT"`
 }
 
 func (p Postgres) DSN() string {

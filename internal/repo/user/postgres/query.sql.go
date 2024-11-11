@@ -19,7 +19,7 @@ func (q *Queries) Delete(ctx context.Context, id int64) error {
 }
 
 const get = `-- name: Get :one
-SELECT id, user_type, first_name, last_name, phone, tg_nick, additional, created_at, updated_at FROM users WHERE id = $1
+SELECT id, user_type, first_name, last_name, phone, additional, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) Get(ctx context.Context, id int64) (*User, error) {
@@ -31,7 +31,6 @@ func (q *Queries) Get(ctx context.Context, id int64) (*User, error) {
 		&i.FirstName,
 		&i.LastName,
 		&i.Phone,
-		&i.TgNick,
 		&i.Additional,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -40,19 +39,17 @@ func (q *Queries) Get(ctx context.Context, id int64) (*User, error) {
 }
 
 const upsert = `-- name: Upsert :exec
-INSERT INTO users (id, user_type, first_name, last_name, phone, tg_nick, additional)
+INSERT INTO users (id, user_type, first_name, last_name, phone, additional)
 VALUES ($1,
         $2,
         $3,
         $4,
         $5,
-        $6,
-        $7)
+        $6)
 ON CONFLICT (id) DO UPDATE SET user_type  = EXCLUDED.user_type,
                                first_name = EXCLUDED.first_name,
                                last_name  = EXCLUDED.last_name,
                                phone      = EXCLUDED.phone,
-                               tg_nick    = EXCLUDED.tg_nick,
                                additional = EXCLUDED.additional,
                                updated_at = NOW()
 `
@@ -63,7 +60,6 @@ type UpsertParams struct {
 	FirstName  string   `json:"first_name"`
 	LastName   string   `json:"last_name"`
 	Phone      string   `json:"phone"`
-	TgNick     string   `json:"tg_nick"`
 	Additional string   `json:"additional"`
 }
 
@@ -74,7 +70,6 @@ func (q *Queries) Upsert(ctx context.Context, arg *UpsertParams) error {
 		arg.FirstName,
 		arg.LastName,
 		arg.Phone,
-		arg.TgNick,
 		arg.Additional,
 	)
 	return err

@@ -6,7 +6,5 @@ import "embed"
 var FS embed.FS
 
 const (
-
-	//MongoPath      = "mongo"
 	PostgresPath = "postgres"
 )

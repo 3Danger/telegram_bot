@@ -1,4 +1,4 @@
-package chain_states
+package chain
 
 import "context"
 

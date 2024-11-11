@@ -45,6 +45,7 @@ func FromString(data string) *Callback {
 
 		if len(item) == 1 {
 			callback.data[item[0]] = ""
+
 			continue
 		}
 
@@ -58,6 +59,7 @@ func (c *Callback) With(k, v string) *Callback {
 	cp := c.Clone()
 
 	cp.data[k] = v
+
 	return cp
 }
 
@@ -74,6 +76,7 @@ func (c *Callback) WithCallback(o *Callback) *Callback {
 func (c *Callback) Clone() *Callback {
 	cp := New()
 	cp.data = make(map[string]string, len(c.data))
+
 	for k, v := range c.data {
 		cp.data[k] = v
 	}
@@ -87,13 +90,18 @@ func (c *Callback) Data() string {
 	}
 
 	i := 0
+
 	sb := &strings.Builder{}
+
 	for k, v := range c.data {
 		if i != 0 {
 			sb.WriteString(expSeparator)
 		}
+
 		i++
+
 		sb.WriteString(k)
+
 		if v != "" {
 			sb.WriteString(pairSeparator + v)
 		}

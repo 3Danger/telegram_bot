@@ -7,14 +7,25 @@ import (
 )
 
 func Default() *MediaValidator {
-	const megaByte = 1024 * 1024
+	const (
+		megaByte            = 1024 * 1024
+		photoMinResolutions = 1024
+		photoMaxResolutions = 8192
+		photoMinSize        = megaByte / 10
+		photoMaxSize        = megaByte * 10
+		videoMinResolutions = 480
+		videoMaxResolutions = 2592
+		videoMaxSize        = megaByte * 15
+		videoMinDuration    = time.Second * 15
+		videoMaxDuration    = time.Second * 60
+	)
 
 	return New(
-		NewBound[int64](1024, 8192),
-		NewBound[int64](megaByte/10, megaByte*10),
-		NewBound[int64](480, 2592),
-		NewBound[int64](0, megaByte*15),
-		NewBound[time.Duration](time.Second*15, time.Second*60),
+		NewBound[int64](photoMinResolutions, photoMaxResolutions),
+		NewBound[int64](photoMinSize, photoMaxSize),
+		NewBound[int64](videoMinResolutions, videoMaxResolutions),
+		NewBound[int64](0, videoMaxSize),
+		NewBound[time.Duration](videoMinDuration, videoMaxDuration),
 	)
 }
 
@@ -53,17 +64,17 @@ func New(
 	}
 }
 
-type Err struct {
+type Error struct {
 	msg    string
 	tooBig bool
 }
 
-func (e *Err) Error() string { return e.msg }
+func (e *Error) Error() string { return e.msg }
 
-func (e *Err) TooBig() bool { return e.tooBig }
+func (e *Error) TooBig() bool { return e.tooBig }
 
 func newErr(msg string, tooBig bool) error {
-	return &Err{
+	return &Error{
 		msg:    msg,
 		tooBig: tooBig,
 	}

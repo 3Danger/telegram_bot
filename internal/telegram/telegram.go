@@ -10,11 +10,8 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/3Danger/telegram_bot/internal/config"
-	chain_states "github.com/3Danger/telegram_bot/internal/repo/chain-states"
+	"github.com/3Danger/telegram_bot/internal/repo/chain"
 	userpg "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
-	//"github.com/3Danger/telegram_bot/internal/telegram/handlers/auth"
-
-	//"github.com/3Danger/telegram_bot/internal/telegram/handlers/auth"
 	"github.com/3Danger/telegram_bot/internal/telegram/middlewares"
 	"github.com/3Danger/telegram_bot/internal/telegram/models"
 	"github.com/3Danger/telegram_bot/internal/telegram/sender"
@@ -22,7 +19,7 @@ import (
 )
 
 type Handler interface {
-	Handle(context.Context, models.Request) error
+	Handle(ctx context.Context, data models.Request) error
 }
 
 type Telegram struct {
@@ -38,13 +35,13 @@ type Telegram struct {
 
 type Repo struct {
 	user  userpg.Querier
-	chain chain_states.Repo
+	chain chain.Repo
 }
 
 func New(
 	cnf config.Telegram,
 	userRepo userpg.Querier,
-	repoChainStates chain_states.Repo,
+	repoChainStates chain.Repo,
 ) (*Telegram, error) {
 	bot, err := configureBot(cnf)
 	if err != nil {
@@ -70,15 +67,18 @@ func New(
 	return svc, nil
 }
 
+const requestTimeout = time.Second * 30
+
 func configureBot(cnf config.Telegram) (*tele.Bot, error) {
 	opts := &tele.BotOpts{
 		BotClient:         nil,
 		DisableTokenCheck: false,
 		RequestOpts: &tele.RequestOpts{
-			Timeout: time.Second * 30,
+			Timeout: requestTimeout,
 			APIURL:  "",
 		},
 	}
+
 	bot, err := tele.NewBot(cnf.Token, opts)
 	if err != nil {
 		return nil, fmt.Errorf("create new telegram bot: %w", err)
@@ -93,6 +93,7 @@ func (t *Telegram) Start(ctx context.Context) error {
 
 	t.bot.BotClient = middlewares.New(t.bot.BotClient)
 
+	//nolint:gomnd
 	opts := &tele.GetUpdatesOpts{
 		Offset:         0,
 		Limit:          0,
@@ -104,14 +105,16 @@ func (t *Telegram) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return ctx.Err() //nolint:wrapcheck
 		case <-ticker.C:
 			updates, err := t.bot.GetUpdatesWithContext(ctx, opts)
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					continue
 				}
+
 				zerolog.Ctx(ctx).Err(err).Msg("getting updates")
+
 				continue
 			}
 
@@ -125,15 +128,4 @@ func (t *Telegram) Start(ctx context.Context) error {
 			}
 		}
 	}
-}
-
-func getChatID(update tele.Update) int64 {
-	if m := update.Message; m != nil {
-		return m.Chat.Id
-	}
-	if c := update.CallbackQuery; c != nil {
-		return c.Message.GetMessageId()
-	}
-
-	return 0
 }

@@ -31,13 +31,13 @@ func runBot(ctx context.Context, b *build.Build) error {
 	}
 
 	var (
-		repoPermanentUser = b.RepoUserPermanent()
-		repoChainStates   = b.RepoChainStates()
+		repoUser        = b.RepoUser()
+		repoChainStates = b.RepoChainStates()
 	)
 
 	tg, err := telegram.New(
 		cnf.Telegram,
-		repoPermanentUser,
+		repoUser,
 		repoChainStates,
 	)
 	if err != nil {

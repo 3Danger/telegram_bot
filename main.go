@@ -19,7 +19,7 @@ import (
 func main() {
 	cnf, err := config.New()
 	if err != nil {
-		panic(fmt.Errorf("creating config"))
+		panic(fmt.Errorf("creating config: %w", err))
 	}
 
 	ctx := context.Background()

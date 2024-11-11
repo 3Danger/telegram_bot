@@ -1,3 +1,4 @@
+//nolint:forcetypeassert
 package inmemory
 
 import (
@@ -8,7 +9,7 @@ import (
 	r "github.com/3Danger/telegram_bot/internal/repo"
 )
 
-var _ r.Repo[struct{}] = &repo[struct{}]{}
+var _ r.Repo[struct{}] = &repo[struct{}]{} //nolint:exhaustruct
 
 type repo[T any] struct {
 	data *lru.Cache
@@ -24,6 +25,7 @@ func (r *repo[T]) Get(_ context.Context, userID int64) (T, error) {
 	s, ok := r.data.Get(userID)
 	if !ok {
 		var t T
+
 		return t, nil
 	}
 

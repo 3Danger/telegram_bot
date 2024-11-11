@@ -16,9 +16,9 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("creating builder: %w", err)
 	}
 
-	root := &cobra.Command{
+	root := &cobra.Command{ //nolint:exhaustruct
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Usage()
+			return cmd.Usage() //nolint:wrapcheck
 		},
 	}
 

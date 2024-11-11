@@ -1,3 +1,4 @@
+//nolint:exhaustruct
 package auth
 
 import (
@@ -45,20 +46,22 @@ type Auth struct {
 	sender        *sender.Sender
 }
 
+const cacheSize = 10000
+
 func NewAuth(users userpg.Querier, sender *sender.Sender) *Auth {
 	a := &Auth{
 		repo: repo{
-			state: session.NewRepo[stateType](10000),
+			state: session.NewRepo[stateType](cacheSize),
+			cache: session.NewRepo[*userpg.User](cacheSize),
 			user:  users,
 		},
 		sender: sender,
-	}
-
-	a.subHandlerMap = map[stateType]subHandler{
-		stateWelcome:  subHandlerWelcome,
-		stateContact:  subHandlerContact,
-		stateUserType: subHandlerUserType,
-		//stateComplete: subHandlerComplete,
+		subHandlerMap: map[stateType]subHandler{
+			stateWelcome:  subHandlerWelcome,
+			stateContact:  subHandlerContact,
+			stateUserType: subHandlerUserType,
+			// stateComplete: subHandlerComplete,
+		},
 	}
 
 	return a
@@ -89,14 +92,20 @@ func (a *Auth) Handle(ctx context.Context, data models.Request) error {
 	var resp response
 	resp.opt = keyboard.Menu(menu.NewInline(buttons.Home, buttons.Back))
 
-	for next := true; ; {
+	for {
 		handler, ok := a.subHandlerMap[state]
 		if !ok {
 			break
 		}
 
+		var next bool
+
 		if resp, next, err = handler(ctx, a, data); err != nil {
 			return fmt.Errorf("handling session: %w", err)
+		}
+
+		if err = a.sender.Send(data.ChatID(), resp.msg, resp.opt); err != nil {
+			return fmt.Errorf("sending message: %w", err)
 		}
 
 		if !next {
@@ -106,7 +115,7 @@ func (a *Auth) Handle(ctx context.Context, data models.Request) error {
 		state++
 	}
 
-	if err := a.repo.state.Set(ctx, data.UserID(), state); err != nil {
+	if err = a.repo.state.Set(ctx, data.UserID(), state); err != nil {
 		return fmt.Errorf("getting session stateUserType: %w", err)
 	}
 
@@ -129,20 +138,21 @@ func subHandlerContact(ctx context.Context, a *Auth, data models.Request) (respo
 		}, false, nil
 	}
 
-	newUser, err := a.repo.cache.Get(ctx, contact.UserId)
+	newUser, err := a.repo.cache.Get(ctx, contact.UserID)
 	if err != nil {
 		return response{}, false, errors.Wrap(err, "getting user from cache")
 	}
+
 	if newUser == nil {
-		newUser = &userpg.User{ID: contact.UserId}
+		newUser = new(userpg.User)
 	}
 
-	newUser.ID = contact.UserId
+	newUser.ID = contact.UserID
 	newUser.FirstName = contact.LastName
 	newUser.LastName = contact.FirstName
 	newUser.Phone = contact.PhoneNumber
 
-	if err = a.repo.cache.Set(ctx, contact.UserId, newUser); err != nil {
+	if err = a.repo.cache.Set(ctx, contact.UserID, newUser); err != nil {
 		return response{}, false, fmt.Errorf("setting user to cache: %w", err)
 	}
 
@@ -160,6 +170,7 @@ func subHandlerUserType(ctx context.Context, a *Auth, data models.Request) (resp
 	if err != nil {
 		return response{}, false, fmt.Errorf("getting user from cache: %w", err)
 	}
+
 	if u == nil {
 		u = &userpg.User{ID: data.UserID()}
 	}
@@ -185,19 +196,21 @@ func subHandlerUserType(ctx context.Context, a *Auth, data models.Request) (resp
 
 	return response{}, true, nil
 }
-func subHandlerComplete(ctx context.Context, a *Auth, data models.Request) (response, error) {
-	const (
-		ask     = "ask"
-		confirm = "confirm"
-		edit    = "edit"
-	)
-	resp := response{
-		msg: "Проверьте свои свои данные",
-		opt: menu.NewInline(
-			inline.New("Все верно").WithValue(ask, confirm),
-			inline.New("Все верно").WithValue(ask, edit),
-		),
-	}
-	//...
-	return resp, nil
-}
+
+//nolint:gocritic,dupword
+//func subHandlerComplete(_ context.Context, _ *Auth, _ models.Request) (response, error) {
+//	const (
+//		ask     = "ask"
+//		confirm = "confirm"
+//		edit    = "edit"
+//	)
+//	resp := response{
+//		msg: "Проверьте свои свои данные",
+//		opt: menu.NewInline(
+//			inline.New(buttons.ConstAuthSave).WithValue(ask, confirm),
+//			inline.New(buttons.ConstAuthEdit).WithValue(ask, edit),
+//		),
+//	}
+// ...
+//return resp, nil
+//}

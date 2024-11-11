@@ -19,13 +19,14 @@ type Contact struct {
 	PhoneNumber string
 	FirstName   string
 	LastName    string
-	UserId      int64
+	UserID      int64
 }
 
 func NewRequest(update tele.Update) Request {
-	msg := Request{}
+	msg := Request{} //nolint:exhaustruct
 
 	cbData := ""
+
 	if cb := update.CallbackQuery; cb != nil {
 		msg.chatID = cb.Message.GetChat().Id
 		msg.userID = cb.From.Id
@@ -40,7 +41,7 @@ func NewRequest(update tele.Update) Request {
 				PhoneNumber: contact.PhoneNumber,
 				FirstName:   contact.FirstName,
 				LastName:    contact.LastName,
-				UserId:      contact.UserId,
+				UserID:      contact.UserId,
 			}
 		}
 
@@ -48,9 +49,11 @@ func NewRequest(update tele.Update) Request {
 		if um.From != nil {
 			msg.userID = um.From.Id
 		}
+
 		if um.Text == buttons.Home.Button().Url {
 			msg.callback.SetEndpoint(buttons.Home.Button().Url)
 		}
+
 		msg.message = um.Text
 	}
 

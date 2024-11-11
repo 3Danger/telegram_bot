@@ -26,17 +26,17 @@ func (t *Telegram) handlerHome(ctx context.Context, msg models.Request) error {
 		return nil
 	}
 	//
-	//if u.Type == user.TypeSupplier {
+	// if u.Type == user.TypeSupplier {
 	//	return t.handlerSupplierHome(ctx, msg)
 	//}
 	//
-	//return t.handlerCustomerHome(ctx, msg)
+	// return t.handlerCustomerHome(ctx, msg)
 	//
 	return nil
 }
 
 //
-//func (t *Telegram) handlerSupplierHome(ctx context.Context, msg models.Request) error {
+// func (t *Telegram) handlerSupplierHome(ctx context.Context, msg models.Request) error {
 //	text := "Главное меню"
 //
 //	opts := inline.NewLink(
@@ -53,7 +53,7 @@ func (t *Telegram) handlerHome(ctx context.Context, msg models.Request) error {
 //	return nil
 //}
 //
-//func (t *Telegram) handlerCustomerHome(ctx context.Context, msg models.Request) error {
+// func (t *Telegram) handlerCustomerHome(ctx context.Context, msg models.Request) error {
 //	text := "Главное меню"
 //
 //	opts := inline.NewLink(

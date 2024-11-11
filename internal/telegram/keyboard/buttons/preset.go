@@ -1,3 +1,4 @@
+//nolint:gochecknoglobals
 package buttons
 
 import (
@@ -15,6 +16,8 @@ const (
 
 	ConstAuthChoiceImSupplier = "Я продавец"
 	ConstAuthChoiceImCustomer = "Я покупатель"
+	ConstAuthSave             = "Сохранить"
+	ConstAuthEdit             = "Изменить"
 )
 
 var (

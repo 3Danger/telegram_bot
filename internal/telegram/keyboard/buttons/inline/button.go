@@ -13,7 +13,8 @@ type Button struct {
 
 func New(text string) *Button {
 	return &Button{
-		text: text,
+		text:     text,
+		callback: &callback.Callback{},
 	}
 }
 
@@ -32,7 +33,16 @@ func (b *Button) WithValue(k, v string) *Button {
 
 func (b *Button) Button() tele.InlineKeyboardButton {
 	return tele.InlineKeyboardButton{
-		Text:         b.text,
-		CallbackData: b.callback.Data(),
+		Text:                         b.text,
+		Url:                          "",
+		CallbackData:                 b.callback.Data(),
+		WebApp:                       nil,
+		LoginUrl:                     nil,
+		SwitchInlineQuery:            nil,
+		SwitchInlineQueryCurrentChat: nil,
+		SwitchInlineQueryChosenChat:  nil,
+		CopyText:                     nil,
+		CallbackGame:                 nil,
+		Pay:                          false,
 	}
 }

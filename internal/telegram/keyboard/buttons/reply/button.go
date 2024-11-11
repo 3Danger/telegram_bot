@@ -12,7 +12,9 @@ type Button struct {
 
 func New(text string) *Button {
 	return &Button{
-		text: text,
+		text:     text,
+		contact:  false,
+		location: false,
 	}
 }
 
@@ -31,7 +33,11 @@ func (b *Button) WithContact() *Button {
 func (b *Button) Button() tele.KeyboardButton {
 	return tele.KeyboardButton{
 		Text:            b.text,
+		RequestUsers:    nil,
+		RequestChat:     nil,
 		RequestContact:  b.contact,
 		RequestLocation: b.location,
+		RequestPoll:     nil,
+		WebApp:          nil,
 	}
 }
