@@ -1,3 +1,4 @@
+//nolint:forcetypeassert
 package inmemory
 
 import (
@@ -6,7 +7,7 @@ import (
 
 	"github.com/golang/groupcache/lru"
 
-	cs "github.com/3Danger/telegram_bot/internal/repo/chain-states"
+	cs "github.com/3Danger/telegram_bot/internal/repo/chain"
 )
 
 type repo struct {
@@ -19,13 +20,12 @@ func NewRepo(maxItems int) cs.Repo {
 	}
 }
 
-func (r *repo) Push(ctx context.Context, userID int64, state string) error {
+func (r *repo) Push(_ context.Context, userID int64, state string) error {
 	var l *list.List
 
 	curListAny, ok := r.data.Get(userID)
 	if ok {
 		l = curListAny.(*list.List)
-		r.data.Remove(userID)
 	} else {
 		l = list.New().Init()
 	}
@@ -41,7 +41,7 @@ func (r *repo) Push(ctx context.Context, userID int64, state string) error {
 	return nil
 }
 
-func (r *repo) Pop(ctx context.Context, userID int64) (string, error) {
+func (r *repo) Pop(_ context.Context, userID int64) (string, error) {
 	l, el := r.lastState(userID)
 	if el == nil || l == nil {
 		return "", nil
@@ -56,7 +56,7 @@ func (r *repo) Pop(ctx context.Context, userID int64) (string, error) {
 	return el.Value.(string), nil
 }
 
-func (r *repo) LastState(ctx context.Context, userID int64) (string, error) {
+func (r *repo) LastState(_ context.Context, userID int64) (string, error) {
 	l, el := r.lastState(userID)
 	if el == nil || l == nil {
 		return "", nil
@@ -81,7 +81,7 @@ func (r *repo) lastState(userID int64) (*list.List, *list.Element) {
 	return l, el
 }
 
-func (r *repo) Clear(ctx context.Context, userID int64) error {
+func (r *repo) Clear(_ context.Context, userID int64) error {
 	r.data.Remove(userID)
 
 	return nil

@@ -1,5 +1,7 @@
 package main
 
+//go:generate sqlc generate
+
 import (
 	"context"
 	"fmt"
@@ -13,10 +15,11 @@ import (
 	"github.com/3Danger/telegram_bot/pkg/graceful"
 )
 
+//go:generate sqlc generate
 func main() {
 	cnf, err := config.New()
 	if err != nil {
-		panic(fmt.Errorf("creating config"))
+		panic(fmt.Errorf("creating config: %w", err))
 	}
 
 	ctx := context.Background()

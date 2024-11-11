@@ -105,7 +105,7 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(github.com/3Danger/telegram_bot)
+      - prefix(github.com/3Danger)
     section-separators:
       - newLine
   godox:

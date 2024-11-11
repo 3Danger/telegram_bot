@@ -1,0 +1,30 @@
+
+import (
+    "time"
+    "github.com/jackc/pgx/v5"
+    "github.com/pkg/errors"
+)
+
+type {{lower .Interface.Name}}WithMetrics struct {
+    base {{.Interface.Type}}
+}
+
+func WithSkipNoRows(base {{.Interface.Type}}) {{.Interface.Type}} {
+    return &{{lower .Interface.Name}}WithMetrics{
+        base: base,
+    }
+}
+
+{{range $method := .Interface.Methods}}
+func (d *{{lower $.Interface.Name}}WithMetrics) {{$method.Name}}({{$method.Params}}) ({{$method.Results}}) {
+    {{if $method.Results}}{{$method.ResultsNames}}{{end}} = d.base.{{$method.Call}}
+    {{if $method.ReturnsError}}
+        if errors.Is(err, pgx.ErrNoRows) {
+            err = nil
+            return {{$method.ResultsNames}}
+        }
+    {{end}}
+
+    return {{if $method.Results}}{{$method.ResultsNames}}{{end}}{{if $method.Results}}{{end}}
+}
+{{end}}

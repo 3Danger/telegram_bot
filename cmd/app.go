@@ -32,15 +32,12 @@ func runBot(ctx context.Context, b *build.Build) error {
 
 	var (
 		repoUser        = b.RepoUser()
-		repoState       = b.RepoState()
 		repoChainStates = b.RepoChainStates()
 	)
 
 	tg, err := telegram.New(
-		ctx,
 		cnf.Telegram,
 		repoUser,
-		repoState,
 		repoChainStates,
 	)
 	if err != nil {

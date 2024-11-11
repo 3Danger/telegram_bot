@@ -1,27 +1,34 @@
 package build
 
 import (
-	cs "github.com/3Danger/telegram_bot/internal/repo/chain-states"
-	csmem "github.com/3Danger/telegram_bot/internal/repo/chain-states/inmemory"
-	"github.com/3Danger/telegram_bot/internal/repo/state"
-	statemem "github.com/3Danger/telegram_bot/internal/repo/state/inmemory"
-	"github.com/3Danger/telegram_bot/internal/repo/user"
-	userpgx "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
+	"time"
+
+	csrepo "github.com/3Danger/telegram_bot/internal/repo/chain"
+	csmem "github.com/3Danger/telegram_bot/internal/repo/chain/inmemory"
+	userpg "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
+	userwrap "github.com/3Danger/telegram_bot/internal/repo/user/wrappers"
 )
 
-func (b *Build) RepoUser() user.Repo {
-	repo := userpgx.NewRepo(b.db)
+const timeout = time.Second * 30
+
+func (b *Build) RepoUser() userpg.Querier {
+	var repo userpg.Querier
+
+	repo = userpg.New(b.db)
+
+	repo = userwrap.NewQuerierWithTimeout(repo,
+		userwrap.QuerierWithTimeoutConfig{
+			DeleteTimeout: timeout,
+			GetTimeout:    timeout,
+			UpsertTimeout: timeout,
+		})
+
+	repo = userwrap.WithSkipNoRows(repo)
 
 	return repo
 }
 
-func (b *Build) RepoState() state.Repo {
-	repo := statemem.NewRepo(b.cnf.Repo.InMemory.MaxItems)
-
-	return repo
-}
-
-func (b *Build) RepoChainStates() cs.Repo {
+func (b *Build) RepoChainStates() csrepo.Repo {
 	repo := csmem.NewRepo(b.cnf.Repo.InMemory.MaxItems)
 
 	return repo
