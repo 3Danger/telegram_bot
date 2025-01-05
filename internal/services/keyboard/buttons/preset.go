@@ -2,9 +2,9 @@
 package buttons
 
 import (
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard"
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons/inline"
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons/reply"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons/inline"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons/reply"
 )
 
 const (

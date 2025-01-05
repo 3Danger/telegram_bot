@@ -3,7 +3,7 @@ package menu
 import (
 	tele "github.com/PaulSonOfLars/gotgbot/v2"
 
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard"
 )
 
 type Inline struct {

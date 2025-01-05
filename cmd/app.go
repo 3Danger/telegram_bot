@@ -8,6 +8,7 @@ import (
 
 	"github.com/3Danger/telegram_bot/internal/build"
 	"github.com/3Danger/telegram_bot/internal/config"
+	telegrambot "github.com/3Danger/telegram_bot/internal/services/telegram_bot"
 	"github.com/3Danger/telegram_bot/internal/telegram"
 )
 
@@ -37,8 +38,7 @@ func runBot(ctx context.Context, b *build.Build) error {
 
 	tg, err := telegram.New(
 		cnf.Telegram,
-		repoUser,
-		repoChainStates,
+		telegrambot.New(repoUser, repoChainStates),
 	)
 	if err != nil {
 		return fmt.Errorf("creating telegram client: %w", err)

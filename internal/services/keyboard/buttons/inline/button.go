@@ -3,7 +3,7 @@ package inline
 import (
 	tele "github.com/PaulSonOfLars/gotgbot/v2"
 
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons/callback"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons/callback"
 )
 
 type Button struct {
