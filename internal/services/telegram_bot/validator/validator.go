@@ -33,10 +33,10 @@ type Bound[T int | int64 | time.Duration] struct {
 	Max, Min T
 }
 
-func NewBound[T int | int64 | time.Duration](min, max T) Bound[T] {
+func NewBound[T int | int64 | time.Duration](minVal, maxVal T) Bound[T] {
 	return Bound[T]{
-		Max: max,
-		Min: min,
+		Max: maxVal,
+		Min: minVal,
 	}
 }
 

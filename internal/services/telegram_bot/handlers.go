@@ -1,29 +1,26 @@
-package telegram
+package telegrambot
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons"
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/menu"
-	"github.com/3Danger/telegram_bot/internal/telegram/models"
+	"github.com/3Danger/telegram_bot/internal/models"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard/menu"
 )
 
-func (t *Telegram) handlerHome(ctx context.Context, msg models.Request) error {
+func (t *Telegram) handlerHome(ctx context.Context, msg models.Request) ([]models.Response, error) {
 	u, err := t.repo.user.Get(ctx, msg.UserID())
 	if err != nil {
-		return fmt.Errorf("getting user from repo: %w", err)
+		return nil, fmt.Errorf("getting user from repo: %w", err)
 	}
 
 	if u == nil {
-		text := "Добро пожаловать!\nДля работы необходимо зарегистрироваться"
-		opts := menu.NewInline(buttons.Registration, buttons.Home, buttons.Back)
-
-		if err = t.sender.Send(msg.UserID(), text, opts); err != nil {
-			return fmt.Errorf("sending message: %w", err)
-		}
-
-		return nil
+		return models.NewResponses(
+			msg.UserID(),
+			"Добро пожаловать!\nДля работы необходимо зарегистрироваться",
+			menu.NewInline(buttons.Registration, buttons.Home, buttons.Back),
+		), nil
 	}
 	//
 	// if u.Type == user.TypeSupplier {
@@ -32,7 +29,7 @@ func (t *Telegram) handlerHome(ctx context.Context, msg models.Request) error {
 	//
 	// return t.handlerCustomerHome(ctx, msg)
 	//
-	return nil
+	return nil, nil
 }
 
 //

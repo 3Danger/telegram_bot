@@ -3,8 +3,9 @@ package models
 import (
 	tele "github.com/PaulSonOfLars/gotgbot/v2"
 
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons"
-	"github.com/3Danger/telegram_bot/internal/telegram/keyboard/buttons/callback"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons"
+	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons/callback"
 )
 
 type Request struct {
@@ -20,6 +21,32 @@ type Contact struct {
 	FirstName   string
 	LastName    string
 	UserID      int64
+}
+
+type Response struct {
+	ChatID int64
+	Text   string
+	Menu   keyboard.Menu
+}
+
+type Responses []Response
+
+func NewResponses(chatID int64, text string, menu keyboard.Menu) Responses {
+	return Responses{
+		Response{
+			ChatID: chatID,
+			Text:   text,
+			Menu:   menu,
+		},
+	}
+}
+
+func (r *Responses) Add(chatID int64, text string, menu keyboard.Menu) {
+	*r = append(*r, Response{
+		ChatID: chatID,
+		Text:   text,
+		Menu:   menu,
+	})
 }
 
 func NewRequest(update tele.Update) Request {
