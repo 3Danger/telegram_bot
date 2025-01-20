@@ -15,7 +15,6 @@ import (
 	"github.com/3Danger/telegram_bot/pkg/graceful"
 )
 
-//go:generate sqlc generate
 func main() {
 	cnf, err := config.New()
 	if err != nil {
