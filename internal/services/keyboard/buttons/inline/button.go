@@ -34,7 +34,7 @@ func (b *Button) WithValue(k, v string) *Button {
 func (b *Button) Button() tele.InlineKeyboardButton {
 	return tele.InlineKeyboardButton{
 		Text:                         b.text,
-		Url:                          "",
+		Url:                          b.callback.Endpoint(),
 		CallbackData:                 b.callback.Data(),
 		WebApp:                       nil,
 		LoginUrl:                     nil,

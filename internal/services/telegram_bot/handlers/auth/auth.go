@@ -11,7 +11,6 @@ import (
 	r "github.com/3Danger/telegram_bot/internal/repo"
 	session "github.com/3Danger/telegram_bot/internal/repo/session/inmemory"
 	userpg "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
-	"github.com/3Danger/telegram_bot/internal/services/keyboard"
 	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons"
 	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons/inline"
 	"github.com/3Danger/telegram_bot/internal/services/keyboard/menu"
@@ -76,7 +75,7 @@ func (a *Auth) Handle(ctx context.Context, data models.Request) (models.Response
 		return nil, fmt.Errorf("getting session stateUserType: %w", err)
 	}
 
-	response := models.NewResponses(data.ChatID(), "", keyboard.Menu(menu.NewInline(buttons.Home, buttons.Back)))
+	var response models.Responses
 
 	for {
 		handler, ok := a.subHandlerMap[state]

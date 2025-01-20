@@ -28,8 +28,9 @@ func (d *querierWithMetrics) Delete(ctx context.Context, id int64) (err error) {
 	err = d.base.Delete(ctx, id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		err = nil
-		return err
+		var r0 error
+
+		return r0
 	}
 
 	return err
@@ -39,8 +40,10 @@ func (d *querierWithMetrics) Get(ctx context.Context, id int64) (up1 *_sourcePos
 	up1, err = d.base.Get(ctx, id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		err = nil
-		return up1, err
+		var r0 *_sourcePostgres.User
+		var r1 error
+
+		return r0, r1
 	}
 
 	return up1, err
@@ -50,8 +53,9 @@ func (d *querierWithMetrics) Upsert(ctx context.Context, arg *_sourcePostgres.Up
 	err = d.base.Upsert(ctx, arg)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		err = nil
-		return err
+		var r0 error
+
+		return r0
 	}
 
 	return err

@@ -1,3 +1,9 @@
+run-bot:
+	go run main.go bot
+
+run-migration:
+	go run main.go migration up
+
 up-postgres-docker:
 	docker compose up -d postgres
 

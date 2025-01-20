@@ -25,5 +25,5 @@ var (
 	Back         keyboard.InlineButton = inline.NewWithEndpoint(ConstBack, "/back")
 	Registration keyboard.InlineButton = inline.NewWithEndpoint(ConstRegistration, "/registration")
 	Location     keyboard.ReplyButton  = reply.New(ConstLocation).WithLocation()
-	Contact      keyboard.ReplyButton  = reply.New(ConstContact).WithLocation()
+	Contact      keyboard.ReplyButton  = reply.New(ConstContact).WithContact()
 )
