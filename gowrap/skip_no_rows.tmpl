@@ -20,11 +20,11 @@ func (d *{{lower $.Interface.Name}}WithMetrics) {{$method.Name}}({{$method.Param
     {{if $method.Results}}{{$method.ResultsNames}}{{end}} = d.base.{{$method.Call}}
     {{if $method.ReturnsError}}
         if errors.Is(err, pgx.ErrNoRows) {
-            err = nil
-            return {{$method.ResultsNames}}
+            {{range $i, $result := $method.Results}} var r{{$i}} {{$result.Type}}
+            {{end}}
+            return {{range $i, $result := $method.Results}}r{{$i}}{{if ne $i (sub (len $method.Results) 1)}}, {{end}}{{end}}
         }
     {{end}}
-
-    return {{if $method.Results}}{{$method.ResultsNames}}{{end}}{{if $method.Results}}{{end}}
+    return {{$method.ResultsNames}}
 }
 {{end}}

@@ -10,7 +10,7 @@ import (
 )
 
 func (t *Telegram) configureRoutes() {
-	t.router[buttons.Registration.Button().Url] = auth.NewAuth(t.repo.user)
+	t.router[buttons.Registration.Endpoint()] = auth.NewAuth(t.repo.user)
 }
 
 func (t *Telegram) MessageProcessor(

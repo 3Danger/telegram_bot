@@ -77,8 +77,9 @@ func NewRequest(update tele.Update) Request {
 			msg.userID = um.From.Id
 		}
 
-		if um.Text == buttons.Home.Button().Url {
-			msg.callback.SetEndpoint(buttons.Home.Button().Url)
+		if isHomePage := um.Text == buttons.Home.Button().Text; isHomePage {
+			msg.callback.SetEndpoint(buttons.Home.Button().Text)
+			um.Text = ""
 		}
 
 		msg.message = um.Text
