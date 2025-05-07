@@ -18,10 +18,10 @@ func New(text string) *Button {
 	}
 }
 
-func NewWithEndpoint(text, url string) *Button {
+func NewWithEndpoint[T ~string](text, url T) *Button {
 	return &Button{
-		text:     text,
-		callback: callback.New().With("endpoint", url),
+		text:     string(text),
+		callback: callback.New().With("endpoint", string(url)),
 	}
 }
 
@@ -31,10 +31,14 @@ func (b *Button) WithValue(k, v string) *Button {
 	return b
 }
 
+func (b *Button) Endpoint() string {
+	return b.callback.Endpoint()
+}
+
 func (b *Button) Button() tele.InlineKeyboardButton {
 	return tele.InlineKeyboardButton{
 		Text:                         b.text,
-		Url:                          b.callback.Endpoint(),
+		Url:                          "",
 		CallbackData:                 b.callback.Data(),
 		WebApp:                       nil,
 		LoginUrl:                     nil,

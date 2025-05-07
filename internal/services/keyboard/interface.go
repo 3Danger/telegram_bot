@@ -8,6 +8,7 @@ type Menu interface {
 
 type InlineButton interface {
 	Button() gotgbot.InlineKeyboardButton
+	Endpoint() string
 }
 
 type ReplyButton interface {

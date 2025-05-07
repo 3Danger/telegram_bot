@@ -12,7 +12,6 @@ import (
 	session "github.com/3Danger/telegram_bot/internal/repo/session/inmemory"
 	userpg "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
 	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons"
-	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons/inline"
 	"github.com/3Danger/telegram_bot/internal/services/keyboard/menu"
 )
 
@@ -31,7 +30,16 @@ type repo struct {
 	user  userpg.Querier
 }
 
-type subHandler func(ctx context.Context, a *Auth, data models.Request) (models.Responses, bool, error)
+type step int
+
+const (
+	stepHead    step = -2
+	stepBack    step = -1
+	stepCurrent step = 0
+	stepNext    step = 1
+)
+
+type subHandler func(ctx context.Context, a *Auth, data models.Request) (models.Responses, step, error)
 
 type Auth struct {
 	repo          repo
@@ -51,7 +59,7 @@ func NewAuth(users userpg.Querier) *Auth {
 			stateWelcome:  subHandlerWelcome,
 			stateContact:  subHandlerContact,
 			stateUserType: subHandlerUserType,
-			// stateComplete: subHandlerComplete,
+			stateComplete: subHandlerComplete,
 		},
 	}
 }
@@ -77,28 +85,30 @@ func (a *Auth) Handle(ctx context.Context, data models.Request) (models.Response
 
 	var response models.Responses
 
+loop:
 	for {
 		handler, ok := a.subHandlerMap[state]
 		if !ok {
 			break
 		}
 
-		var next bool
-
-		var resp models.Responses
-
-		resp, next, err = handler(ctx, a, data)
+		resp, step, err := handler(ctx, a, data)
 		if err != nil {
 			return nil, fmt.Errorf("handling session: %w", err)
 		}
 
 		response = append(response, resp...)
 
-		if !next {
-			break
+		switch step {
+		case stepHead:
+			state = 0
+		case stepBack:
+			state--
+		case stepNext:
+			state++
+		case stepCurrent:
+			break loop
 		}
-
-		state++
 	}
 
 	if err = a.repo.state.Set(ctx, data.UserID(), state); err != nil {
@@ -108,25 +118,25 @@ func (a *Auth) Handle(ctx context.Context, data models.Request) (models.Response
 	return response, nil
 }
 
-func subHandlerWelcome(_ context.Context, _ *Auth, data models.Request) (models.Responses, bool, error) {
+func subHandlerWelcome(_ context.Context, _ *Auth, data models.Request) (models.Responses, step, error) {
 	return models.NewResponses(data.ChatID(),
 		"Добро пожаловать на страницу регистрации\nНажми поделиться контактами что бы продолжить!",
 		menu.NewReply(buttons.Contact).OneTime(true).Persistent(true),
-	), true, nil
+	), stepNext, nil
 }
 
-func subHandlerContact(ctx context.Context, a *Auth, data models.Request) (models.Responses, bool, error) {
+func subHandlerContact(ctx context.Context, a *Auth, data models.Request) (models.Responses, step, error) {
 	contact := data.Contact()
 	if contact == nil {
 		return models.NewResponses(data.ChatID(),
 			"Поделитесь контактами что бы продолжить",
 			menu.NewReply(buttons.Contact).OneTime(true).Persistent(true),
-		), false, nil
+		), stepCurrent, nil
 	}
 
 	newUser, err := a.repo.cache.Get(ctx, contact.UserID)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "getting user from cache")
+		return nil, stepCurrent, errors.Wrap(err, "getting user from cache")
 	}
 
 	if newUser == nil {
@@ -134,18 +144,18 @@ func subHandlerContact(ctx context.Context, a *Auth, data models.Request) (model
 	}
 
 	newUser.ID = contact.UserID
-	newUser.FirstName = contact.LastName
-	newUser.LastName = contact.FirstName
+	newUser.FirstName = contact.FirstName
+	newUser.LastName = contact.LastName
 	newUser.Phone = contact.PhoneNumber
 
 	if err = a.repo.cache.Set(ctx, contact.UserID, newUser); err != nil {
-		return nil, false, fmt.Errorf("setting user to cache: %w", err)
+		return nil, stepCurrent, fmt.Errorf("setting user to cache: %w", err)
 	}
 
-	return nil, true, nil
+	return nil, stepNext, nil
 }
 
-func subHandlerUserType(ctx context.Context, a *Auth, data models.Request) (models.Responses, bool, error) {
+func subHandlerUserType(ctx context.Context, a *Auth, data models.Request) (models.Responses, step, error) {
 	const (
 		supplier = "supplier"
 		customer = "customer"
@@ -154,7 +164,7 @@ func subHandlerUserType(ctx context.Context, a *Auth, data models.Request) (mode
 
 	u, err := a.repo.cache.Get(ctx, data.UserID())
 	if err != nil {
-		return nil, false, fmt.Errorf("getting user from cache: %w", err)
+		return nil, stepCurrent, fmt.Errorf("getting user from cache: %w", err)
 	}
 
 	if u == nil {
@@ -171,33 +181,58 @@ func subHandlerUserType(ctx context.Context, a *Auth, data models.Request) (mode
 			data.ChatID(),
 			"Выберите тип аккаунта",
 			menu.NewInline(
-				inline.New(buttons.ConstAuthChoiceImCustomer).WithValue(userType, customer),
-				inline.New(buttons.ConstAuthChoiceImSupplier).WithValue(userType, supplier),
+				buttons.ConstAuthChoiceImCustomer.Inline().WithValue(userType, customer),
+				buttons.ConstAuthChoiceImSupplier.Inline().WithValue(userType, supplier),
 			),
-		), false, nil
+		), stepCurrent, nil
 	}
 
 	if err = a.repo.cache.Set(ctx, data.UserID(), u); err != nil {
-		return nil, false, fmt.Errorf("setting user to cache: %w", err)
+		return nil, stepCurrent, fmt.Errorf("setting user to cache: %w", err)
 	}
 
-	return nil, true, nil
+	return nil, stepNext, nil
 }
 
-//nolint:gocritic,dupword
-//func subHandlerComplete(_ context.Context, _ *Auth, _ models.Request) (response, error) {
-//	const (
-//		ask     = "ask"
-//		confirm = "confirm"
-//		edit    = "edit"
-//	)
-//	resp := response{
-//		msg: "Проверьте свои свои данные",
-//		opt: menu.NewInline(
-//			inline.New(buttons.ConstAuthSave).WithValue(ask, confirm),
-//			inline.New(buttons.ConstAuthEdit).WithValue(ask, edit),
-//		),
-//	}
-// ...
-//return resp, nil
-//}
+func subHandlerComplete(ctx context.Context, a *Auth, data models.Request) (models.Responses, step, error) {
+	const (
+		ask     = "ask"
+		confirm = "confirm"
+		edit    = "edit"
+	)
+
+	switch data.Value(ask) {
+	case edit:
+		return models.Responses{}, stepHead, nil
+	case confirm:
+		return models.Responses{{
+			ChatID: data.ChatID(),
+			Text:   "Сохранено!",
+			Menu:   menu.NewInline(buttons.Home, buttons.Back),
+		}}, stepNext, nil
+	}
+
+	u, err := a.repo.cache.Get(ctx, data.UserID())
+	if err != nil {
+		return nil, stepCurrent, fmt.Errorf("getting user from cache: %w", err)
+	}
+
+	if u == nil {
+		//TODO юзер не сохранился
+		return nil, stepHead, nil
+	}
+
+	text := `Имя: ` + u.FirstName + "\n" +
+		`Фамилия: ` + u.LastName + "\n" +
+		`Телефон: ` + u.Phone + "\n" +
+		`Инфо: ` + u.Additional + "\n"
+
+	return models.Responses{{
+		ChatID: data.ChatID(),
+		Text:   "Проверьте свои свои данные\n" + text,
+		Menu: menu.NewInline(
+			buttons.ConstAuthSave.Inline().WithValue(ask, confirm),
+			buttons.ConstAuthEdit.Inline().WithValue(ask, edit),
+		),
+	}}, stepCurrent, nil
+}

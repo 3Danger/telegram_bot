@@ -10,9 +10,9 @@ type Button struct {
 	location bool
 }
 
-func New(text string) *Button {
+func New[T ~string](text T) *Button {
 	return &Button{
-		text:     text,
+		text:     string(text),
 		contact:  false,
 		location: false,
 	}
