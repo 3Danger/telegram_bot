@@ -21,7 +21,7 @@ func NewRepo[T any](maxItems int) r.Repo[T] {
 	}
 }
 
-func (r *repo[T]) Get(_ context.Context, userID int64) (T, error) {
+func (r *repo[T]) Get(_ context.Context, userID int) (T, error) {
 	s, ok := r.data.Get(userID)
 	if !ok {
 		var t T
@@ -32,14 +32,14 @@ func (r *repo[T]) Get(_ context.Context, userID int64) (T, error) {
 	return s.(T), nil
 }
 
-func (r *repo[T]) Set(_ context.Context, userID int64, state T) error {
+func (r *repo[T]) Set(_ context.Context, userID int, state T) error {
 	r.data.Remove(userID)
 	r.data.Add(userID, state)
 
 	return nil
 }
 
-func (r *repo[T]) Delete(_ context.Context, userID int64) error {
+func (r *repo[T]) Delete(_ context.Context, userID int) error {
 	r.data.Remove(userID)
 
 	return nil

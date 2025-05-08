@@ -20,7 +20,7 @@ func NewRepo(maxItems int) cs.Repo {
 	}
 }
 
-func (r *repo) Push(_ context.Context, userID int64, state string) error {
+func (r *repo) Push(_ context.Context, userID int, state string) error {
 	var l *list.List
 
 	curListAny, ok := r.data.Get(userID)
@@ -41,7 +41,7 @@ func (r *repo) Push(_ context.Context, userID int64, state string) error {
 	return nil
 }
 
-func (r *repo) Pop(_ context.Context, userID int64) (string, error) {
+func (r *repo) Pop(_ context.Context, userID int) (string, error) {
 	l, el := r.lastState(userID)
 	if el == nil || l == nil {
 		return "", nil
@@ -56,7 +56,7 @@ func (r *repo) Pop(_ context.Context, userID int64) (string, error) {
 	return el.Value.(string), nil
 }
 
-func (r *repo) LastState(_ context.Context, userID int64) (string, error) {
+func (r *repo) LastState(_ context.Context, userID int) (string, error) {
 	l, el := r.lastState(userID)
 	if el == nil || l == nil {
 		return "", nil
@@ -65,7 +65,7 @@ func (r *repo) LastState(_ context.Context, userID int64) (string, error) {
 	return el.Value.(string), nil
 }
 
-func (r *repo) lastState(userID int64) (*list.List, *list.Element) {
+func (r *repo) lastState(userID int) (*list.List, *list.Element) {
 	curListAny, ok := r.data.Get(userID)
 	if !ok {
 		return nil, nil
@@ -81,7 +81,7 @@ func (r *repo) lastState(userID int64) (*list.List, *list.Element) {
 	return l, el
 }
 
-func (r *repo) Clear(_ context.Context, userID int64) error {
+func (r *repo) Clear(_ context.Context, userID int) error {
 	r.data.Remove(userID)
 
 	return nil

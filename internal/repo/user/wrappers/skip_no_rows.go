@@ -4,28 +4,29 @@
 
 package wrappers
 
-//go:generate gowrap gen -p github.com/3Danger/telegram_bot/internal/repo/user/postgres -i Querier -t ../../../../gowrap/skip_no_rows.tmpl -o skip_no_rows.go -l ""
+//go:generate gowrap gen -p github.com/3Danger/telegram_bot/internal/repo/user -i Repo -t ../../../../gowrap/skip_no_rows.tmpl -o skip_no_rows.go -l ""
 
 import (
 	"context"
 
-	_sourcePostgres "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
+	"github.com/3Danger/telegram_bot/internal/models"
+	_sourceUser "github.com/3Danger/telegram_bot/internal/repo/user"
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 )
 
-type querierWithMetrics struct {
-	base _sourcePostgres.Querier
+type repoWithMetrics struct {
+	base _sourceUser.Repo
 }
 
-func WithSkipNoRows(base _sourcePostgres.Querier) _sourcePostgres.Querier {
-	return &querierWithMetrics{
+func WithSkipNoRows(base _sourceUser.Repo) _sourceUser.Repo {
+	return &repoWithMetrics{
 		base: base,
 	}
 }
 
-func (d *querierWithMetrics) Delete(ctx context.Context, id int64) (err error) {
-	err = d.base.Delete(ctx, id)
+func (d *repoWithMetrics) ApproveChanges(ctx context.Context, id int) (err error) {
+	err = d.base.ApproveChanges(ctx, id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		var r0 error
@@ -36,11 +37,23 @@ func (d *querierWithMetrics) Delete(ctx context.Context, id int64) (err error) {
 	return err
 }
 
-func (d *querierWithMetrics) Get(ctx context.Context, id int64) (up1 *_sourcePostgres.User, err error) {
-	up1, err = d.base.Get(ctx, id)
+func (d *repoWithMetrics) DeleteDraft(ctx context.Context, id int) (err error) {
+	err = d.base.DeleteDraft(ctx, id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		var r0 *_sourcePostgres.User
+		var r0 error
+
+		return r0
+	}
+
+	return err
+}
+
+func (d *repoWithMetrics) GetCompleted(ctx context.Context, id int) (up1 *models.User, err error) {
+	up1, err = d.base.GetCompleted(ctx, id)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		var r0 *models.User
 		var r1 error
 
 		return r0, r1
@@ -49,8 +62,81 @@ func (d *querierWithMetrics) Get(ctx context.Context, id int64) (up1 *_sourcePos
 	return up1, err
 }
 
-func (d *querierWithMetrics) Upsert(ctx context.Context, arg *_sourcePostgres.UpsertParams) (err error) {
-	err = d.base.Upsert(ctx, arg)
+func (d *repoWithMetrics) GetDraft(ctx context.Context, id int) (up1 *models.User, err error) {
+	up1, err = d.base.GetDraft(ctx, id)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		var r0 *models.User
+		var r1 error
+
+		return r0, r1
+	}
+
+	return up1, err
+}
+
+func (d *repoWithMetrics) SetAdditional(ctx context.Context, id int, additionalParams string) (err error) {
+	err = d.base.SetAdditional(ctx, id, additionalParams)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		var r0 error
+
+		return r0
+	}
+
+	return err
+}
+
+func (d *repoWithMetrics) SetFirstName(ctx context.Context, id int, firstNameParams string) (err error) {
+	err = d.base.SetFirstName(ctx, id, firstNameParams)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		var r0 error
+
+		return r0
+	}
+
+	return err
+}
+
+func (d *repoWithMetrics) SetLastName(ctx context.Context, id int, lastNameParams string) (err error) {
+	err = d.base.SetLastName(ctx, id, lastNameParams)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		var r0 error
+
+		return r0
+	}
+
+	return err
+}
+
+func (d *repoWithMetrics) SetPhone(ctx context.Context, id int, phoneParams string) (err error) {
+	err = d.base.SetPhone(ctx, id, phoneParams)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		var r0 error
+
+		return r0
+	}
+
+	return err
+}
+
+func (d *repoWithMetrics) SetUserType(ctx context.Context, id int, userTypeParams string) (err error) {
+	err = d.base.SetUserType(ctx, id, userTypeParams)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		var r0 error
+
+		return r0
+	}
+
+	return err
+}
+
+func (d *repoWithMetrics) UpsertDraft(ctx context.Context, user models.User) (err error) {
+	err = d.base.UpsertDraft(ctx, user)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		var r0 error

@@ -6,7 +6,7 @@ import (
 
 	"github.com/3Danger/telegram_bot/internal/models"
 	"github.com/3Danger/telegram_bot/internal/services/keyboard/buttons"
-	"github.com/3Danger/telegram_bot/internal/services/telegram_bot/handlers/auth"
+	"github.com/3Danger/telegram_bot/internal/services/telegram_bot/auth"
 )
 
 func (t *Telegram) configureRoutes() {

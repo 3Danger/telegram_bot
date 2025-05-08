@@ -5,7 +5,7 @@ import (
 
 	"github.com/3Danger/telegram_bot/internal/models"
 	"github.com/3Danger/telegram_bot/internal/repo/chain"
-	userpg "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
+	"github.com/3Danger/telegram_bot/internal/repo/user"
 	"github.com/3Danger/telegram_bot/internal/services/telegram_bot/validator"
 )
 
@@ -21,12 +21,12 @@ type Telegram struct {
 }
 
 type Repo struct {
-	user  userpg.Querier
+	user  user.Repo
 	chain chain.Repo
 }
 
 func New(
-	userRepo userpg.Querier,
+	userRepo user.Repo,
 	repoChainStates chain.Repo,
 ) *Telegram {
 	svc := &Telegram{

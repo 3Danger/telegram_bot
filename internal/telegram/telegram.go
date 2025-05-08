@@ -110,7 +110,7 @@ func (t *Telegram) Start(ctx context.Context) error {
 				}
 
 				for _, r := range resp {
-					if _, err := t.bot.SendMessage(r.ChatID, r.Text, r.Menu.Menu()); err != nil {
+					if _, err := t.bot.SendMessage(int64(r.ChatID), r.Text, r.Menu.Menu()); err != nil {
 						return fmt.Errorf("sending message: %w", err)
 					}
 				}

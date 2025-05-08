@@ -4,63 +4,148 @@
 
 package wrappers
 
-//go:generate gowrap gen -p github.com/3Danger/telegram_bot/internal/repo/user/postgres -i Querier -t https://raw.githubusercontent.com/hexdigest/gowrap/6dcfa0d34561455b87203c7522970d6075b34144/templates/timeout -o timeout.go -l ""
+//go:generate gowrap gen -p github.com/3Danger/telegram_bot/internal/repo/user -i Repo -t https://raw.githubusercontent.com/hexdigest/gowrap/6dcfa0d34561455b87203c7522970d6075b34144/templates/timeout -o timeout.go -l ""
 
 import (
 	"context"
 	"time"
 
-	_sourcePostgres "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
+	"github.com/3Danger/telegram_bot/internal/models"
+	_sourceUser "github.com/3Danger/telegram_bot/internal/repo/user"
 )
 
-// QuerierWithTimeout implements _sourcePostgres.Querier interface instrumented with timeouts
-type QuerierWithTimeout struct {
-	_sourcePostgres.Querier
-	config QuerierWithTimeoutConfig
+// RepoWithTimeout implements _sourceUser.Repo interface instrumented with timeouts
+type RepoWithTimeout struct {
+	_sourceUser.Repo
+	config RepoWithTimeoutConfig
 }
 
-type QuerierWithTimeoutConfig struct {
-	DeleteTimeout time.Duration
+type RepoWithTimeoutConfig struct {
+	ApproveChangesTimeout time.Duration
 
-	GetTimeout time.Duration
+	DeleteDraftTimeout time.Duration
 
-	UpsertTimeout time.Duration
+	GetCompletedTimeout time.Duration
+
+	GetDraftTimeout time.Duration
+
+	SetAdditionalTimeout time.Duration
+
+	SetFirstNameTimeout time.Duration
+
+	SetLastNameTimeout time.Duration
+
+	SetPhoneTimeout time.Duration
+
+	SetUserTypeTimeout time.Duration
+
+	UpsertDraftTimeout time.Duration
 }
 
-// NewQuerierWithTimeout returns QuerierWithTimeout
-func NewQuerierWithTimeout(base _sourcePostgres.Querier, config QuerierWithTimeoutConfig) QuerierWithTimeout {
-	return QuerierWithTimeout{
-		Querier: base,
-		config:  config,
+// NewRepoWithTimeout returns RepoWithTimeout
+func NewRepoWithTimeout(base _sourceUser.Repo, config RepoWithTimeoutConfig) RepoWithTimeout {
+	return RepoWithTimeout{
+		Repo:   base,
+		config: config,
 	}
 }
 
-// Delete implements _sourcePostgres.Querier
-func (_d QuerierWithTimeout) Delete(ctx context.Context, id int64) (err error) {
+// ApproveChanges implements _sourceUser.Repo
+func (_d RepoWithTimeout) ApproveChanges(ctx context.Context, id int) (err error) {
 	var cancelFunc func()
-	if _d.config.DeleteTimeout > 0 {
-		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.DeleteTimeout)
+	if _d.config.ApproveChangesTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.ApproveChangesTimeout)
 		defer cancelFunc()
 	}
-	return _d.Querier.Delete(ctx, id)
+	return _d.Repo.ApproveChanges(ctx, id)
 }
 
-// Get implements _sourcePostgres.Querier
-func (_d QuerierWithTimeout) Get(ctx context.Context, id int64) (up1 *_sourcePostgres.User, err error) {
+// DeleteDraft implements _sourceUser.Repo
+func (_d RepoWithTimeout) DeleteDraft(ctx context.Context, id int) (err error) {
 	var cancelFunc func()
-	if _d.config.GetTimeout > 0 {
-		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.GetTimeout)
+	if _d.config.DeleteDraftTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.DeleteDraftTimeout)
 		defer cancelFunc()
 	}
-	return _d.Querier.Get(ctx, id)
+	return _d.Repo.DeleteDraft(ctx, id)
 }
 
-// Upsert implements _sourcePostgres.Querier
-func (_d QuerierWithTimeout) Upsert(ctx context.Context, arg *_sourcePostgres.UpsertParams) (err error) {
+// GetCompleted implements _sourceUser.Repo
+func (_d RepoWithTimeout) GetCompleted(ctx context.Context, id int) (up1 *models.User, err error) {
 	var cancelFunc func()
-	if _d.config.UpsertTimeout > 0 {
-		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.UpsertTimeout)
+	if _d.config.GetCompletedTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.GetCompletedTimeout)
 		defer cancelFunc()
 	}
-	return _d.Querier.Upsert(ctx, arg)
+	return _d.Repo.GetCompleted(ctx, id)
+}
+
+// GetDraft implements _sourceUser.Repo
+func (_d RepoWithTimeout) GetDraft(ctx context.Context, id int) (up1 *models.User, err error) {
+	var cancelFunc func()
+	if _d.config.GetDraftTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.GetDraftTimeout)
+		defer cancelFunc()
+	}
+	return _d.Repo.GetDraft(ctx, id)
+}
+
+// SetAdditional implements _sourceUser.Repo
+func (_d RepoWithTimeout) SetAdditional(ctx context.Context, id int, additionalParams string) (err error) {
+	var cancelFunc func()
+	if _d.config.SetAdditionalTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.SetAdditionalTimeout)
+		defer cancelFunc()
+	}
+	return _d.Repo.SetAdditional(ctx, id, additionalParams)
+}
+
+// SetFirstName implements _sourceUser.Repo
+func (_d RepoWithTimeout) SetFirstName(ctx context.Context, id int, firstNameParams string) (err error) {
+	var cancelFunc func()
+	if _d.config.SetFirstNameTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.SetFirstNameTimeout)
+		defer cancelFunc()
+	}
+	return _d.Repo.SetFirstName(ctx, id, firstNameParams)
+}
+
+// SetLastName implements _sourceUser.Repo
+func (_d RepoWithTimeout) SetLastName(ctx context.Context, id int, lastNameParams string) (err error) {
+	var cancelFunc func()
+	if _d.config.SetLastNameTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.SetLastNameTimeout)
+		defer cancelFunc()
+	}
+	return _d.Repo.SetLastName(ctx, id, lastNameParams)
+}
+
+// SetPhone implements _sourceUser.Repo
+func (_d RepoWithTimeout) SetPhone(ctx context.Context, id int, phoneParams string) (err error) {
+	var cancelFunc func()
+	if _d.config.SetPhoneTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.SetPhoneTimeout)
+		defer cancelFunc()
+	}
+	return _d.Repo.SetPhone(ctx, id, phoneParams)
+}
+
+// SetUserType implements _sourceUser.Repo
+func (_d RepoWithTimeout) SetUserType(ctx context.Context, id int, userTypeParams string) (err error) {
+	var cancelFunc func()
+	if _d.config.SetUserTypeTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.SetUserTypeTimeout)
+		defer cancelFunc()
+	}
+	return _d.Repo.SetUserType(ctx, id, userTypeParams)
+}
+
+// UpsertDraft implements _sourceUser.Repo
+func (_d RepoWithTimeout) UpsertDraft(ctx context.Context, user models.User) (err error) {
+	var cancelFunc func()
+	if _d.config.UpsertDraftTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(ctx, _d.config.UpsertDraftTimeout)
+		defer cancelFunc()
+	}
+	return _d.Repo.UpsertDraft(ctx, user)
 }

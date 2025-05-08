@@ -13,13 +13,13 @@ overrides:
       - db_type: "public.users"
 sql:
   - schema: "internal/migrations/postgres"
-    queries: "internal/repo/user/postgres/query.sql"
+    queries: "internal/repo/user/postgres/query/query.sql"
     engine: "postgresql"
     gen:
       go:
-        package: "postgres"
+        package: "query"
         sql_package: "pgx/v5"
-        out: "internal/repo/user/postgres"
+        out: "internal/repo/user/postgres/query"
 #        emit_enum_valid_method: true
         omit_unused_structs: true
         emit_json_tags: true

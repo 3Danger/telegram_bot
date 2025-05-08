@@ -5,22 +5,30 @@ import (
 
 	csrepo "github.com/3Danger/telegram_bot/internal/repo/chain"
 	csmem "github.com/3Danger/telegram_bot/internal/repo/chain/inmemory"
-	userpg "github.com/3Danger/telegram_bot/internal/repo/user/postgres"
+	"github.com/3Danger/telegram_bot/internal/repo/user"
+	"github.com/3Danger/telegram_bot/internal/repo/user/postgres"
 	userwrap "github.com/3Danger/telegram_bot/internal/repo/user/wrappers"
 )
 
 const timeout = time.Second * 30
 
-func (b *Build) RepoUser() userpg.Querier {
-	var repo userpg.Querier
+func (b *Build) RepoUser() user.Repo {
+	var repo user.Repo
 
-	repo = userpg.New(b.db)
+	repo = postgres.NewRepo(b.db)
 
-	repo = userwrap.NewQuerierWithTimeout(repo,
-		userwrap.QuerierWithTimeoutConfig{
-			DeleteTimeout: timeout,
-			GetTimeout:    timeout,
-			UpsertTimeout: timeout,
+	repo = userwrap.NewRepoWithTimeout(repo,
+		userwrap.RepoWithTimeoutConfig{
+			ApproveChangesTimeout: timeout,
+			DeleteDraftTimeout:    timeout,
+			GetCompletedTimeout:   timeout,
+			GetDraftTimeout:       timeout,
+			SetAdditionalTimeout:  timeout,
+			SetFirstNameTimeout:   timeout,
+			SetLastNameTimeout:    timeout,
+			SetPhoneTimeout:       timeout,
+			SetUserTypeTimeout:    timeout,
+			UpsertDraftTimeout:    timeout,
 		})
 
 	repo = userwrap.WithSkipNoRows(repo)

@@ -20,18 +20,18 @@ type Contact struct {
 	PhoneNumber string
 	FirstName   string
 	LastName    string
-	UserID      int64
+	UserID      int
 }
 
 type Response struct {
-	ChatID int64
+	ChatID int
 	Text   string
 	Menu   keyboard.Menu
 }
 
 type Responses []Response
 
-func NewResponses(chatID int64, text string, menu keyboard.Menu) Responses {
+func NewResponses(chatID int, text string, menu keyboard.Menu) Responses {
 	return Responses{
 		Response{
 			ChatID: chatID,
@@ -41,7 +41,7 @@ func NewResponses(chatID int64, text string, menu keyboard.Menu) Responses {
 	}
 }
 
-func (r *Responses) Add(chatID int64, text string, menu keyboard.Menu) {
+func (r *Responses) Add(chatID int, text string, menu keyboard.Menu) {
 	*r = append(*r, Response{
 		ChatID: chatID,
 		Text:   text,
@@ -68,7 +68,7 @@ func NewRequest(update tele.Update) Request {
 				PhoneNumber: contact.PhoneNumber,
 				FirstName:   contact.FirstName,
 				LastName:    contact.LastName,
-				UserID:      contact.UserId,
+				UserID:      int(contact.UserId),
 			}
 		}
 
@@ -79,6 +79,7 @@ func NewRequest(update tele.Update) Request {
 
 		if isHomePage := um.Text == buttons.Home.Button().Text; isHomePage {
 			msg.callback.SetEndpoint(buttons.Home.Button().Text)
+
 			um.Text = ""
 		}
 
@@ -100,12 +101,12 @@ func (r *Request) Value(key string) string {
 	return r.callback.Value(key)
 }
 
-func (r *Request) UserID() int64 {
-	return r.userID
+func (r *Request) UserID() int {
+	return int(r.userID)
 }
 
-func (r *Request) ChatID() int64 {
-	return r.chatID
+func (r *Request) ChatID() int {
+	return int(r.chatID)
 }
 
 func (r *Request) Message() string {

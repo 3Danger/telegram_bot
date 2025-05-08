@@ -10,7 +10,7 @@ import (
 )
 
 func (t *Telegram) handlerHome(ctx context.Context, msg models.Request) ([]models.Response, error) {
-	u, err := t.repo.user.Get(ctx, msg.UserID())
+	u, err := t.repo.user.GetCompleted(ctx, msg.UserID())
 	if err != nil {
 		return nil, fmt.Errorf("getting user from repo: %w", err)
 	}

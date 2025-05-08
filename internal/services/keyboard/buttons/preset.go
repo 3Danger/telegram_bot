@@ -32,6 +32,12 @@ const (
 	ConstLocation     Button = "Поделиться локацией"
 	ConstContact      Button = "Поделиться контактами"
 
+	ConstChangeName       Button = "Изменить имя"
+	ConstChangeFamily     Button = "Изменить фамилию"
+	ConstChangePhone      Button = "Изменить телефон"
+	ConstChangeUserType   Button = "Изменить тип аккаунта"
+	ConstChangeAdditional Button = "Править дополнительную информацию"
+
 	ConstAuthChoiceImSupplier Button = "Я продавец"
 	ConstAuthChoiceImCustomer Button = "Я покупатель"
 	ConstAuthSave             Button = "Сохранить"
@@ -39,15 +45,15 @@ const (
 )
 
 const (
-	UrlHome         = "/start"
-	UrlBack         = "/back"
-	UrlRegistration = "/registration"
+	URLHome         = "/start"
+	URLBack         = "/back"
+	URLRegistration = "/registration"
 )
 
 var (
-	Home         keyboard.InlineButton = ConstHome.InlineEndpoint(UrlHome)
-	Back         keyboard.InlineButton = ConstBack.InlineEndpoint(UrlBack)
-	Registration keyboard.InlineButton = ConstRegistration.InlineEndpoint(UrlRegistration)
+	Home         keyboard.InlineButton = ConstHome.InlineEndpoint(URLHome)
+	Back         keyboard.InlineButton = ConstBack.InlineEndpoint(URLBack)
+	Registration keyboard.InlineButton = ConstRegistration.InlineEndpoint(URLRegistration)
 	Location     keyboard.ReplyButton  = ConstLocation.Reply().WithLocation()
 	Contact      keyboard.ReplyButton  = ConstContact.Reply().WithContact()
 )
